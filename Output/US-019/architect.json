@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No architectural concerns. The fix is purely a test-stub correction in tests/loop.bats — adding plan.json creation inside the planning_run_loop stub to match the pattern already established in tests 16 and 21. No changes to lib/ or Agents/ are involved, so no ADR is warranted. Existing ADRs (001–004) are unaffected."
+}

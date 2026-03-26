@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "US-024 is purely additive documentation work — README, SVG diagram, example workspace, and docs.bats validation. No new runtime contracts are introduced. The example workspace must mirror ADR-001's filesystem layout (Agents/, Input/, Output/, Output/ADR/) and ADR-003's agent frontmatter format (role, inputs, outputs, constraints) exactly — treat the example files as living illustrations of those ADRs. The docs/architecture.svg must be self-contained with no external hrefs or image references to render correctly on GitHub. tests/docs.bats should use lightweight file-existence and grep checks only — avoid parsing SVG structure beyond a basic <svg tag check. No changes to lib/ or Agents/ are required, so no existing ADR is affected."
+}

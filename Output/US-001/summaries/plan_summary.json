@@ -1,0 +1,70 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify lib/workspace.sh defines WORKSPACE_DIRS=(Agents Input Output Output/ADR), WORKSPACE_REQUIRED_INPUTS=(Input/prd.json CLAUDE.md), and WORKSPACE_OUTPUT_FILES=(Output/progress.md Output/tech.md).",
+      "files": [
+        "lib/workspace.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Verify bootstrap_workspace() uses mkdir -p for all WORKSPACE_DIRS and touch for WORKSPACE_OUTPUT_FILES only when absent.",
+      "files": [
+        "lib/workspace.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Verify validate_workspace() iterates WORKSPACE_DIRS and WORKSPACE_REQUIRED_INPUTS, prints ERROR to stderr for each missing item, and returns 1 if any errors were found.",
+      "files": [
+        "lib/workspace.sh"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Verify workspace_init() calls bootstrap_workspace then validate_workspace, providing a single entry-point that bootstraps then fails fast on missing required inputs.",
+      "files": [
+        "lib/workspace.sh"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Confirm tests/workspace.bats covers: directory creation, placeholder file creation, no-overwrite for existing outputs, valid workspace passes, each required directory missing fails, each required input missing fails, workspace_init happy and sad paths.",
+      "files": [
+        "tests/workspace.bats"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Run shellcheck lib/workspace.sh — must exit 0 with no diagnostics.",
+      "files": [
+        "lib/workspace.sh"
+      ]
+    },
+    {
+      "step": 7,
+      "action": "Run bats tests/workspace.bats — all 9 tests must pass.",
+      "files": [
+        "tests/workspace.bats"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "bootstrap_workspace creates Agents, Input, Output, Output/ADR directories",
+    "bootstrap_workspace creates Output/progress.md and Output/tech.md when absent",
+    "bootstrap_workspace does not overwrite existing output files",
+    "validate_workspace returns 0 when all required dirs and Input/prd.json + CLAUDE.md exist",
+    "validate_workspace returns 1 and prints ERROR when any required directory is missing",
+    "validate_workspace returns 1 and prints ERROR containing 'prd.json' when Input/prd.json is absent",
+    "validate_workspace returns 1 and prints ERROR containing 'CLAUDE.md' when CLAUDE.md is absent",
+    "workspace_init succeeds end-to-end when required inputs are pre-seeded",
+    "workspace_init fails with ERROR when required inputs are absent after bootstrap"
+  ],
+  "estimated_complexity": "low",
+  "risks": [],
+  "steps_count": 7,
+  "testing_count": 9
+}

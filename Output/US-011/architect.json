@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR required. US-011 is a bug fix (renaming the tester stub from test.md to tester.md in tests/tester.bats setup) plus verification that the test-first flow is already correctly implemented. The agent registry contract (ADR-003) already covers the tester role and its file location (Agents/tester.md). The test-first sequencing — tester_generate before developer_run in loop_run_iteration — is an implementation detail within lib/loop.sh, not a new architectural contract. No new roles, files, or inter-agent protocols are introduced. The one invariant worth noting: ADR-003 specifies role field existence is validated but not value, so Agents/tester.md carrying 'role: test' remains safe without amendment."
+}

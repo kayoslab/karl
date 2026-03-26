@@ -1,0 +1,48 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Audit all 6 required agent markdown files (planner, reviewer, architect, tester, developer, deployment) to confirm each has all 4 contract frontmatter fields as plain top-level lines: role, inputs, outputs, constraints. Fix any missing fields.",
+      "files": [
+        "Agents/planner.md",
+        "Agents/reviewer.md",
+        "Agents/architect.md",
+        "Agents/tester.md",
+        "Agents/developer.md",
+        "Agents/deployment.md"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Verify agents_validate_contract in lib/agents.sh reads contract fields correctly from the real agent file format (no YAML --- delimiters). Confirm grep-based extraction returns the first matching line and does not match body content accidentally.",
+      "files": ["lib/agents.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Run shellcheck on lib/agents.sh (and any related lib files) to satisfy the 'Typecheck passes' acceptance criterion. Fix any shellcheck warnings or errors found.",
+      "files": ["lib/agents.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Confirm tests/agents.bats contains the 6 'real_*_agent_file_passes_contract_validation' tests (one per required agent role) and that all pass against the real Agents/ directory.",
+      "files": ["tests/agents.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Run the full bats test suite (bats tests/) to confirm all existing tests pass with no regressions.",
+      "files": []
+    }
+  ],
+  "testing_recommendations": [
+    "Confirm that agents_validate_contract returns 0 for each of the 6 real agent files in Agents/",
+    "Confirm that agents_validate returns 0 when run against the real Agents/ directory",
+    "Add a test that agents_validate fails when a contract field (e.g. constraints) is removed from one of the real agent files — if not already covered",
+    "Verify shellcheck passes with exit 0 on lib/agents.sh (run as: shellcheck lib/agents.sh)",
+    "Ensure the 'agents_get_contract_field does not return prompt body content' test still passes — guards against false matches in the body"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The grep-based agents_get_contract_field scans the entire file; if a real agent file's prompt body contains a line starting with 'role:' or 'inputs:' before the frontmatter fields, extraction would return wrong values — mitigated by keeping frontmatter at the top of the file",
+    "Shellcheck may flag SC2048/SC2068 array expansion patterns in agents_validate loops; these are typically false positives with BATS-style array usage in bash 3.2"
+  ]
+}

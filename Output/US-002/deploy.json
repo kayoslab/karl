@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 12 lock.bats tests pass covering: LOCK creation, PID write, conflict detection, ERROR/WARNING messaging, --force-lock override, idempotent release, lock_exists return codes, and lock_path output. shellcheck on lib/lock.sh returns clean (exit 0); clippy.sh shows only SC1091 info-level source-following notices (not errors), which are expected in a multi-file bash project. All acceptance criteria satisfied."
+}

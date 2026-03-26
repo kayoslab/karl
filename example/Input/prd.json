@@ -1,0 +1,19 @@
+{
+  "project": "example",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Hello, world — print a greeting to stdout",
+      "description": "As a user, I want to run `./hello.sh` and see a friendly greeting printed to standard output so that I can verify the project is working.",
+      "acceptanceCriteria": [
+        "Running `./hello.sh` prints 'Hello, world!' to stdout",
+        "The script is executable (chmod +x)",
+        "A BATS test asserts the expected output",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "This is an example ticket. Replace with your own user stories."
+    }
+  ]
+}

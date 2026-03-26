@@ -1,0 +1,11 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [
+    "lib/workspace.sh",
+    "tests/workspace.bats"
+  ],
+  "files_count": 2,
+  "ready_for_test": true,
+  "summary": "lib/workspace.sh defines WORKSPACE_DIRS, WORKSPACE_REQUIRED_INPUTS, and WORKSPACE_OUTPUT_FILES with bootstrap_workspace, validate_workspace, and workspace_init functions. tests/workspace.bats covers all 9 required test cases — all pass and shellcheck exits clean."
+}

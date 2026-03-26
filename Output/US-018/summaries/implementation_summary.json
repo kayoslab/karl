@@ -1,0 +1,8 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [],
+  "files_count": 0,
+  "ready_for_test": true,
+  "summary": "All implementation was already present: lib/summarize.sh has summarize_plan, summarize_review, summarize_tests, summarize_architect, summarize_artifact dispatcher, and summarize_ticket_artifacts covering all four artifact types; lib/planning.sh has planning_persist_review and planning_run_loop already calls it on approve. All 72 tests in tests/summarize.bats and tests/planning.bats pass."
+}

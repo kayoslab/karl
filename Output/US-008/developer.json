@@ -1,0 +1,1 @@
+{"files_changed":[],"summary":"All 6 agent markdown files already have the required contract frontmatter (role, inputs, outputs, constraints). lib/agents.sh correctly validates contract fields using fenced-frontmatter awk extraction. All 47 tests in tests/agents.bats pass and shellcheck exits 0 with no warnings.","ready_for_test":true}

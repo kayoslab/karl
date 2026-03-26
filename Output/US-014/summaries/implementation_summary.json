@@ -1,0 +1,11 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [
+    "lib/merge.sh",
+    "karl.sh"
+  ],
+  "files_count": 2,
+  "ready_for_test": true,
+  "summary": "Created lib/merge.sh with merge_check_clean_tree, merge_check_main_exists, merge_check_no_conflicts, and merge_safe_check; sourced it in karl.sh. All 31 tests pass and shellcheck is clean."
+}

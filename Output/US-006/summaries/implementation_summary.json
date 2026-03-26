@@ -1,0 +1,12 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [
+    "lib/branch.sh",
+    "lib/loop.sh",
+    "tests/loop.bats"
+  ],
+  "files_count": 3,
+  "ready_for_test": true,
+  "summary": "Created lib/branch.sh with branch_name (deterministic feature/<id>-<slug> generator) and branch_ensure (create-or-reuse branch). Updated lib/loop.sh to call both functions in loop_run_iteration, returning 1 with ERROR on branch failure. Updated tests/loop.bats to source branch.sh and add default no-op stubs so existing tests pass."
+}

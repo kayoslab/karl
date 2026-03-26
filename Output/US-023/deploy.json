@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "567/567 tests pass. Shellcheck reports only SC1091 info notices (dynamic source paths not followable statically) — no errors or warnings. US-023 marked passes:true in PRD. Clean command implementation satisfies all acceptance criteria: --clean flag exposed via CLI, checks out main, removes LOCK, --force discards uncommitted changes, prints clear output, covered by automated tests."
+}

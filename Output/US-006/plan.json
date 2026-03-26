@@ -1,0 +1,52 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify lib/branch.sh has branch_name (deterministic slug generation: lowercase, hyphenate spaces/underscores, strip non-alphanumeric, collapse hyphens, trim) producing 'feature/<id>-<slug>' format",
+      "files": ["lib/branch.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Verify lib/branch.sh has branch_ensure that checks show-ref for existing branch (reuse with checkout) or creates new from base (checkout -b), returning 1 with ERROR message on any git failure",
+      "files": ["lib/branch.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Verify lib/loop.sh loop_run_iteration calls branch_name then branch_ensure and returns 1 with clear error if branch_ensure fails (stopping the iteration)",
+      "files": ["lib/loop.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Verify tests/branch.bats covers: format output, lowercase slug, spaces-to-hyphens, strip specials, collapse hyphens, determinism, missing-arg failures, branch creation, branch reuse, failure on bad base",
+      "files": ["tests/branch.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on lib/branch.sh and lib/loop.sh to confirm typecheck passes with no errors",
+      "files": ["lib/branch.sh", "lib/loop.sh"]
+    },
+    {
+      "step": 6,
+      "action": "Run bats tests/branch.bats to confirm all tests pass",
+      "files": ["tests/branch.bats"]
+    }
+  ],
+  "testing_recommendations": [
+    "branch_name 'US-006' 'Create deterministic gitflow feature branch' => 'feature/US-006-create-deterministic-gitflow-feature-branch'",
+    "branch_name with same inputs twice must produce identical output (determinism)",
+    "branch_name with UPPER CASE title produces all-lowercase slug",
+    "branch_name with special chars (colons, parens, slashes) strips them cleanly",
+    "branch_name with multiple consecutive spaces collapses to single hyphens and trims leading/trailing",
+    "branch_name with no args returns non-zero exit",
+    "branch_ensure on a fresh repo creates the branch and switches HEAD to it",
+    "branch_ensure when branch already exists checks it out, prints 'Reusing existing branch', returns 0",
+    "branch_ensure with an invalid base branch returns 1 and prints ERROR to stderr",
+    "loop_run_iteration returns 1 with ERROR output when branch_ensure fails (stub git to fail on checkout -b)"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "lib/branch.sh has unstaged changes (per git status) — verify the working-tree version is complete and consistent with tests before running",
+    "bash 3.2 (macOS default): sed -E portability — ensure extended regex flag works; prefer [[:upper:]] over \\u",
+    "branch_ensure's untracked-file conflict recovery uses awk to parse git error output — fragile if git message format changes across versions"
+  ]
+}

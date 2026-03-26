@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "ADR-002 already fully covers this ticket — branch format, sanitization rules, branch_ensure contract, and the single-authoritative-implementation constraint are all documented. Implementation must stay consistent with ADR-002: (1) branch_name is the only permitted place to construct branch names — no inline construction in loop.sh or elsewhere; (2) branch_ensure must reuse silently on existing branch, not error; (3) any slug rule change requires updating ADR-002 and tests simultaneously. No new ADR needed."
+}

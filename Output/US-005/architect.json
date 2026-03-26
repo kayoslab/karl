@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR required. ADR-001 already establishes Input/prd.json as a required runtime input under the workspace filesystem contract. US-005 is a pure implementation verification task — prd.sh selection logic (prd_validate, prd_next_story, prd_select_next) and the loop's handling of exit code 2 are business logic, not architectural decisions. Confirm that: (1) lib/prd.sh is sourced in clippy.sh, (2) loop_run_iteration treats prd_select_next exit code 2 as a clean all-done termination (not an error), and (3) bats tests/prd.bats passes fully. No structural changes to the workspace layout or agent protocol are introduced."
+}

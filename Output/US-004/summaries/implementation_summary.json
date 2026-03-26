@@ -1,0 +1,11 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [
+    "karl.sh",
+    "tests/cli.bats"
+  ],
+  "files_count": 2,
+  "ready_for_test": true,
+  "summary": "Added claude_validate() call to karl.sh main() (before workspace_init) so the loop fails fast when Claude CLI is absent. Added two end-to-end integration tests to tests/cli.bats that run karl.sh directly with a PATH containing system utilities but no claude binary, verifying exit non-zero and actionable error output."
+}

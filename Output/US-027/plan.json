@@ -1,0 +1,59 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "file": "lib/logging.sh",
+      "action": "create",
+      "description": "New module with two functions: `log_info <msg>` (always prints) and `log_verbose <msg>` (prints only when KARL_VERBOSE=true). Both prepend an optional timestamp+ticket prefix when verbose. Export KARL_VERBOSE and KARL_TICKET_ID globals."
+    },
+    {
+      "step": 2,
+      "file": "karl.sh",
+      "action": "modify",
+      "description": "Add --verbose flag to parse_args, setting KARL_VERBOSE=true. Export it. Add `source lib/logging.sh` after existing sources. Update usage() to document --verbose. Replace the two inline `echo` calls in main() with log_info calls."
+    },
+    {
+      "step": 3,
+      "file": "lib/loop.sh",
+      "action": "modify",
+      "description": "Replace all `echo` calls that emit internal agent pipeline step progress with `log_verbose`. Keep the high-level 'selected story', 'complete', and 'all stories complete' echoes as `log_info`."
+    },
+    {
+      "step": 4,
+      "file": "lib/agents.sh",
+      "action": "modify",
+      "description": "Replace `echo '[agents] Registry loaded...'` with `log_verbose`."
+    },
+    {
+      "step": 5,
+      "file": "lib/planning.sh, lib/architect.sh, lib/tester.sh, lib/deploy.sh, lib/rework.sh",
+      "action": "modify",
+      "description": "Audit each file; replace diagnostic/progress `echo` calls with `log_verbose`, keep error (`>&2`) calls unchanged."
+    },
+    {
+      "step": 6,
+      "file": "tests/logging.bats",
+      "action": "create",
+      "description": "BATS tests covering: log_info always outputs; log_verbose suppressed by default; log_verbose emits with KARL_VERBOSE=true; verbose output includes timestamp and ticket id when KARL_TICKET_ID is set."
+    },
+    {
+      "step": 7,
+      "file": "tests/karl_args.bats (or extend existing)",
+      "action": "create/modify",
+      "description": "Test that `--verbose` is accepted without error, that unknown flags still error, and that KARL_VERBOSE is exported as 'true'."
+    }
+  ],
+  "testing_recommendations": [
+    "Unit-test log_info and log_verbose in isolation by sourcing logging.sh in BATS setup()",
+    "Assert log_verbose produces no output when KARL_VERBOSE is unset or 'false'",
+    "Assert log_verbose produces timestamped output containing KARL_TICKET_ID when KARL_VERBOSE=true and KARL_TICKET_ID is set",
+    "Assert log_info always produces output regardless of KARL_VERBOSE value",
+    "Integration smoke: run karl.sh --dry-run and confirm only high-level lines appear; run with --verbose and confirm additional lines appear"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Every lib/*.sh that sources another module must not call log_verbose before logging.sh is sourced — ordering in karl.sh source block must be respected (logging.sh first or very early)",
+    "BATS tests that stub echo or capture output may need updating if they rely on exact echo-based output from loop.sh or agents.sh",
+    "shellcheck will flag uses of KARL_VERBOSE/KARL_TICKET_ID as undefined unless logging.sh exports them or files declare SC2154 suppression — must export both globals from logging.sh"
+  ]
+}

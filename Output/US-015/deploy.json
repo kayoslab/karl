@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 24 deploy.bats tests pass. Shellcheck clean. deploy_gate correctly enforces decision/gates_checked fields, persists deploy.json, calls commit_update_prd on pass, and returns 1 on fail. The only fix was adding a missing commit_update_prd stub in the test setup. Pre-existing failures in commit.bats, docs.bats, loop.bats, and tech tests are unrelated to US-015."
+}

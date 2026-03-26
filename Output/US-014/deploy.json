@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 31 tests in tests/merge.bats pass. shellcheck reports no warnings or errors on lib/merge.sh. merge_safe_check is integrated in lib/loop.sh and lib/merge.sh is sourced in clippy.sh. All acceptance criteria are satisfied: clean-tree check, main-exists check, conflict-free check, artifact creation (merge_check.json with all_passed), [merge]-prefixed logging, and correct return codes (0/1/2)."
+}

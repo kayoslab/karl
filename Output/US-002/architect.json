@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "ADR-001 already establishes LOCK's role and location ('LOCK lives at the repository root and is managed exclusively by the karl entrypoint for single-instance protection'). No new architectural decision is needed. The PID-file mutex pattern is a well-understood convention; the accepted limitation of SIGKILL not triggering the EXIT trap is noted in the plan and requires no ADR. Verify lib/lock.sh, clippy.sh integration, and tests/lock.bats all align with ADR-001's contract — no structural changes to the filesystem layout are introduced by this ticket."
+}

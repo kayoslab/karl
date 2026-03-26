@@ -1,0 +1,39 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Fix test setup in tests/planning.bats: rename agent stub files from planning.md/reviewing.md to planner.md/reviewer.md to match the role names used in lib/planning.sh (planning_run_agent uses role 'planner', planning_review_plan uses role 'reviewer').",
+      "files": ["tests/planning.bats"]
+    },
+    {
+      "step": 2,
+      "action": "Verify lib/planning.sh function signatures and logic are correct: planning_run_agent calls agents_compose_prompt with role 'planner', planning_review_plan calls with role 'reviewer', planning_run_loop orchestrates both with retry logic and persists plan via planning_persist.",
+      "files": ["lib/planning.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Verify Agents/planner.md and Agents/reviewer.md exist with correct frontmatter (role, inputs, outputs, constraints) and template placeholders ({{ticket}}, {{plan}}) matching what agents_compose_prompt substitutes.",
+      "files": ["Agents/planner.md", "Agents/reviewer.md"]
+    },
+    {
+      "step": 4,
+      "action": "Run the planning.bats test suite to confirm all tests pass after the stub filename fix.",
+      "files": ["tests/planning.bats"]
+    }
+  ],
+  "testing_recommendations": [
+    "Confirm planning_run_agent correctly passes the 'planner' role to agents_compose_prompt — test that stub file must be named planner.md not planning.md",
+    "Confirm planning_review_plan correctly passes the 'reviewer' role — stub file must be reviewer.md",
+    "Verify planning_run_loop happy path: plan created, review approves, plan.json written to Output/<id>/plan.json with testing_recommendations field",
+    "Verify planning_run_loop revision cycle: reviewer returns 'revise' with feedback, planner produces revised plan, second review approves",
+    "Verify planning_run_loop error path: retry limit exceeded returns non-zero exit",
+    "Verify planning_run_loop error path: planning agent failure returns non-zero exit",
+    "Verify planning_run_loop error path: bad JSON from agent returns non-zero exit",
+    "Verify planning_run_loop error path: plan missing required fields (plan, testing_recommendations) returns non-zero exit"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The primary failure cause is a naming mismatch between test stub files (planning.md/reviewing.md) and the role names used in code (planner/reviewer) — the fix is a one-line rename in test setup",
+    "If Agents/planner.md or Agents/reviewer.md are missing required frontmatter fields, agents_validate will fail in integration — verify both files have role, inputs, outputs, constraints"
+  ]
+}

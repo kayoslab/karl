@@ -1,0 +1,68 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Audit lib/deploy.sh against all acceptance criteria. Verify: (a) deploy_run_agent passes tests context to the agent, (b) deploy_gate returns 1 on fail so loop_run_iteration stops before merge, (c) deploy_persist writes deploy.json artifact, (d) commit_update_prd is called on pass. Note any gaps.",
+      "files": [
+        "lib/deploy.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Add a git commit inside deploy_gate for gate-related artifacts after decision=pass. After calling deploy_persist and commit_update_prd, stage Output/<ticket_id>/deploy.json and Input/prd.json then call git commit with a message like 'chore: [<ticket_id>] deployment gate passed'. This fulfils the acceptance criterion that gate-related changes are linked to git history.",
+      "files": [
+        "lib/deploy.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Ensure Agents/deployment.md constraints enforce that gates_checked must include both 'tests' and 'typecheck', and that failures are surfaced when decision=fail. Review the output format section to confirm it matches what deploy_gate validates (decision, gates_checked, failures, notes).",
+      "files": [
+        "Agents/deployment.md"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Review tests/deploy.bats for coverage of: (1) gate commit creation on pass, (2) return-to-developer behavior on fail (status=1), (3) ADR consistency validation path, (4) missing-fields error, (5) non-JSON error. Add any missing test cases.",
+      "files": [
+        "tests/deploy.bats"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on lib/deploy.sh and Agents/deployment.md lint (if applicable) to ensure typecheck passes with no errors.",
+      "files": [
+        "lib/deploy.sh"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Run the full test suite (bats tests/) and confirm deploy.bats passes and no regressions are introduced in other test files.",
+      "files": [
+        "tests/deploy.bats"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "Test that deploy_gate creates a git commit for deploy.json and prd.json when decision=pass (check git log in a temp workspace)",
+    "Test that deploy_gate returns exit code 1 when decision=fail, preventing commit_finalize from running",
+    "Test that deploy_gate logs failure reasons from the 'failures' array when decision=fail",
+    "Test that deploy_gate reads ADR files from Output/ADR/ and includes their content in the agent prompt",
+    "Test that deploy_gate reads tests.json artifact and passes it to deploy_run_agent",
+    "Test that deploy_run_agent returns non-zero when the claude stub exits non-zero",
+    "Test that deploy_gate returns non-zero and prints appropriate error when JSON is missing required fields (decision, gates_checked)",
+    "Test that deploy_persist creates Output/<ticket_id>/deploy.json with valid JSON content",
+    "Verify all existing tests in tests/deploy.bats still pass after changes",
+    "Run shellcheck on lib/deploy.sh with no errors"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Adding a git commit inside deploy_gate couples the deploy module to git state — the workspace must be a valid git repo and on the feature branch at call time. This is already the case in loop_run_iteration but should be confirmed in tests.",
+    "The gate commit must not interfere with the subsequent commit_create call in commit_finalize — if deploy_gate stages and commits deploy.json/prd.json, commit_finalize's commit_create will skip them (already committed), which is correct behavior.",
+    "shellcheck may flag unquoted variables or pipefail issues introduced by the new git commit call; must pass cleanly."
+  ],
+  "steps_count": 6,
+  "testing_count": 10
+}

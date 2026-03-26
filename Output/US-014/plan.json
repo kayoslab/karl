@@ -1,0 +1,51 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify lib/merge.sh is complete: merge_check_clean_tree, merge_check_main_exists, merge_check_no_conflicts, merge_safe_check are all implemented and source-clean.",
+      "files": ["lib/merge.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Verify lib/loop.sh integrates merge_safe_check in loop_run_iteration after commit_create and before deploy_gate, handling rc=2 (conflict) by routing to rework_loop and rc!=0 as hard failure.",
+      "files": ["lib/loop.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Verify clippy.sh sources lib/merge.sh so merge_safe_check is available at runtime.",
+      "files": ["clippy.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Verify tests/merge.bats covers all acceptance criteria: clean tree check, main-exists check, conflict detection, artifact creation (merge_check.json with all_passed), logging, and correct return codes (0/1/2).",
+      "files": ["tests/merge.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on lib/merge.sh to confirm typecheck passes (no warnings/errors).",
+      "files": ["lib/merge.sh"]
+    },
+    {
+      "step": 6,
+      "action": "Run bats tests/merge.bats to confirm all 31 tests pass.",
+      "files": ["tests/merge.bats"]
+    },
+    {
+      "step": 7,
+      "action": "Mark US-014 passes=true in the PRD.",
+      "files": ["prd.json"]
+    }
+  ],
+  "testing_recommendations": [
+    "All 31 tests in tests/merge.bats already pass — verify with: bats tests/merge.bats",
+    "Confirm merge_check_clean_tree returns 0 for clean tree, 1 for staged/modified tracked files",
+    "Confirm merge_check_main_exists returns 0 when main exists, 1 when absent",
+    "Confirm merge_check_no_conflicts returns 0 (clean), 1 (precondition error), 2 (conflict markers)",
+    "Confirm merge_safe_check writes Output/<ticket_id>/merge_check.json with checks and all_passed fields",
+    "Confirm merge_safe_check returns 2 on conflict (triggering rework path in loop.sh)",
+    "Confirm merge_safe_check does not modify the working tree (uses merge-tree dry-run)",
+    "Run full test suite (bats tests/) to confirm no regressions in loop or other modules"
+  ],
+  "estimated_complexity": "low",
+  "risks": []
+}

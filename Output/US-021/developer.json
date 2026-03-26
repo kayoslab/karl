@@ -1,0 +1,1 @@
+{"files_changed": [], "summary": "No changes required — lib/tech.sh already uses KARL_AGENTS_DIR env override and tests/tech.bats already exports KARL_AGENTS_DIR pointing to the temp workspace Agents dir. The fix from the plan is already implemented.", "ready_for_test": true}

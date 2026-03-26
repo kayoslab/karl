@@ -1,0 +1,10 @@
+{
+  "ticket_id": "US-022",
+  "feature_branch": "feature/US-022-provide-concise-cli-logging-and-operator-controls",
+  "checks": {
+    "clean_tree": "pass",
+    "main_exists": "pass",
+    "no_conflicts": "pass"
+  },
+  "all_passed": true
+}

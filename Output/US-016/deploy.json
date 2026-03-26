@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 55 tests in commit.bats and deploy.bats pass. Both lib/commit.sh and lib/deploy.sh pass bash -n typecheck. The sequencing fix (commit_update_prd moved from deploy_gate into commit_finalize) is correctly implemented and covered by tests. ADR contracts are satisfied. Ready to merge."
+}

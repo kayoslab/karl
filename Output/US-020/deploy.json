@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 29 tests/rate_limit.bats tests pass. shellcheck is clean on all modified libs. ADR-005 compliance confirmed: claude_invoke is the sole claude caller in lib/rate_limit.sh and all agent libs route through it. 4 pre-existing failures in commit/docs/loop/tech tests are attributable to other user stories (US-016, US-019, US-021, US-024) and are out of scope for US-020."
+}

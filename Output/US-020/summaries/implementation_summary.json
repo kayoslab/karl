@@ -1,0 +1,8 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [],
+  "files_count": 0,
+  "ready_for_test": true,
+  "summary": "All US-020 implementation was already in place: lib/rate_limit.sh provides claude_invoke with rate-limit detection and exponential backoff, karl.sh sources it at startup, and all four agent libs (planning, architect, tester, deploy) pipe prompts through claude_invoke."
+}

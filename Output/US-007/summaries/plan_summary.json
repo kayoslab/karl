@@ -1,0 +1,71 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Run the existing BATS tests for lib/agents.sh to identify which tests currently fail: bats tests/agents.bats",
+      "files": [
+        "tests/agents.bats"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Fix agents_get_contract_field in lib/agents.sh if needed: ensure it only reads from frontmatter (between --- delimiters) and falls back to bare top-level fields for files without --- fences. The current grep-anywhere approach may return body content before frontmatter in edge cases.",
+      "files": [
+        "lib/agents.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Verify all six real Agents/*.md files (planner.md, reviewer.md, architect.md, tester.md, developer.md, deployment.md) pass agents_validate_contract. Each must have: role, inputs, outputs, constraints fields detectable by agents_get_contract_field. Check that none of the renamed files (planner vs planning, reviewer vs reviewing, tester vs test) have a mismatch that causes validation to fail.",
+      "files": [
+        "Agents/planner.md",
+        "Agents/reviewer.md",
+        "Agents/architect.md",
+        "Agents/tester.md",
+        "Agents/developer.md",
+        "Agents/deployment.md"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Confirm agents_validate correctly uses AGENTS_REQUIRED_ROLES=(planner reviewer architect tester developer deployment) matching the renamed .md files, and that agents_load delegates to agents_validate with the correct path.",
+      "files": [
+        "lib/agents.sh"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Confirm agents_compose_prompt substitution works end-to-end: the awk str_replace approach handles multi-line values for all five context keys (ticket, plan, adr, tech, tests). Verify against the test cases in tests/agents.bats lines 174-243.",
+      "files": [
+        "lib/agents.sh"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Fix any test or implementation gaps found in steps 1-5, then re-run bats tests/agents.bats until all tests pass.",
+      "files": [
+        "lib/agents.sh",
+        "tests/agents.bats"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "Run bats tests/agents.bats to establish current pass/fail baseline before making any changes",
+    "Pay attention to the 'real agent file passes contract validation' tests (lines 438-466) — these test actual Agents/*.md files on disk and will fail if any contract field is missing or not detectable",
+    "The test 'agents_get_contract_field does not return prompt body content' (line 316) validates frontmatter isolation — ensure the function returns the first (frontmatter) value, not body content, when both contain the same field name",
+    "Test agents_compose_prompt with multi-line ticket/plan values to ensure the awk ENVIRON substitution doesn't mangle newlines or special characters like & and \\",
+    "Verify agents_load prints the expected '[agents] Registry loaded from: ...' message on success (tested implicitly by agents_load tests)",
+    "After any changes to lib/agents.sh, run the full test suite (bats tests/) to catch regressions in dependent modules"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Agents/tester.md has 'role: test' but the required role name is 'tester' — agents_validate_contract only checks field presence not value, so this passes, but if any downstream code resolves role by value it may break",
+    "Agents/reviewer.md has 'role: reviewing' not 'role: reviewer' — same concern as above",
+    "The grep-anywhere approach in agents_get_contract_field is fragile if any agent prompt body contains lines matching '^field:' pattern before the actual frontmatter field; this could cause incorrect values to be returned if the file structure is unusual",
+    "Real agent files use bare frontmatter (no --- delimiters) while test fixtures use --- fenced frontmatter — agents_get_prompt strips --- fenced content only, so for real files the role/inputs/outputs/constraints lines will be included in the composed prompt sent to Claude (may or may not be intentional)"
+  ],
+  "steps_count": 6,
+  "testing_count": 6
+}

@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR required. ADR-001 already establishes git as a core dependency and documents the workspace contract. US-003 is an implementation detail of the startup sequence — not a new architectural decision. Key constraints for the developer: (1) The git repo check must run before workspace_init or any branch creation call in the startup sequence; preserve existing ordering assumptions. (2) Use `git init -b main` (Git >=2.28) or `git symbolic-ref HEAD refs/heads/main` post-init to guarantee the default branch is 'main', not the system default. (3) Name the auto-init flag consistently with existing clippy.sh flags (e.g., --auto-init or CLIPPY_AUTO_INIT env var); check clippy.sh for the convention already in use. (4) Initialization failure must call an existing error-exit helper (e.g., die or error_exit) rather than a raw `exit 1`, to stay consistent with other startup failure paths. (5) The check belongs in lib/git.sh as git_repo_check / git_init_repo, wired into clippy.sh main() before the loop starts."
+}

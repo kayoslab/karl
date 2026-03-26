@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260" font-family="'MS Sans Serif', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">
+  <defs>
+    <linearGradient id="titlebar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#000080"/>
+      <stop offset="100%" stop-color="#1084d0"/>
+    </linearGradient>
+    <linearGradient id="clip-metal" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#e8e8e8"/>
+      <stop offset="40%" stop-color="#b0b0b0"/>
+      <stop offset="100%" stop-color="#787878"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Window shadow -->
+  <rect x="4" y="4" width="896" height="256" rx="0" fill="#404040"/>
+
+  <!-- Window background -->
+  <rect x="0" y="0" width="896" height="256" rx="0" fill="#c0c0c0"/>
+
+  <!-- 3D border -->
+  <line x1="0" y1="0" x2="896" y2="0" stroke="#ffffff" stroke-width="2"/>
+  <line x1="0" y1="0" x2="0" y2="256" stroke="#ffffff" stroke-width="2"/>
+  <line x1="896" y1="0" x2="896" y2="256" stroke="#808080" stroke-width="2"/>
+  <line x1="0" y1="256" x2="896" y2="256" stroke="#808080" stroke-width="2"/>
+  <line x1="2" y1="2" x2="894" y2="2" stroke="#dfdfdf" stroke-width="1"/>
+  <line x1="2" y1="2" x2="2" y2="254" stroke="#dfdfdf" stroke-width="1"/>
+  <line x1="894" y1="2" x2="894" y2="254" stroke="#404040" stroke-width="1"/>
+  <line x1="2" y1="254" x2="894" y2="254" stroke="#404040" stroke-width="1"/>
+
+  <!-- Title bar -->
+  <rect x="4" y="4" width="888" height="22" fill="url(#titlebar)"/>
+  <text x="12" y="20" fill="#ffffff" font-size="12" font-weight="bold">karl.exe</text>
+
+  <!-- Window buttons -->
+  <rect x="834" y="6" width="16" height="16" fill="#c0c0c0" stroke="#ffffff" stroke-width="1"/>
+  <line x1="838" y1="17" x2="846" y2="17" stroke="#000000" stroke-width="2"/>
+  <rect x="852" y="6" width="16" height="16" fill="#c0c0c0" stroke="#ffffff" stroke-width="1"/>
+  <rect x="856" y="10" width="8" height="8" fill="none" stroke="#000000" stroke-width="1.5"/>
+  <rect x="870" y="6" width="16" height="16" fill="#c0c0c0" stroke="#ffffff" stroke-width="1"/>
+  <line x1="874" y1="10" x2="882" y2="18" stroke="#000000" stroke-width="2"/>
+  <line x1="882" y1="10" x2="874" y2="18" stroke="#000000" stroke-width="2"/>
+
+  <!-- Speech bubble -->
+  <rect x="20" y="36" width="272" height="42" rx="4" fill="#ffffe1" stroke="#000000" stroke-width="1"/>
+  <polygon points="100,78 110,94 120,78" fill="#ffffe1" stroke="#000000" stroke-width="1"/>
+  <line x1="101" y1="78" x2="119" y2="78" stroke="#ffffe1" stroke-width="2"/>
+  <text x="32" y="54" fill="#000000" font-size="12">It looks like you're writing a PRD.</text>
+  <text x="32" y="70" fill="#000000" font-size="12">Would you like help?</text>
+
+  <!-- Karl Klammer — paperclip with face -->
+  <path d="M 86 222 L 86 120 Q 86 98 108 98 Q 130 98 130 120 L 130 222 Q 130 244 108 244 Q 86 244 86 222 Z"
+        fill="none" stroke="url(#clip-metal)" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 95 218 L 95 124 Q 95 110 108 110 Q 121 110 121 124 L 121 218"
+        fill="none" stroke="url(#clip-metal)" stroke-width="5.5" stroke-linecap="round"/>
+
+  <!-- Eyes -->
+  <ellipse cx="100" cy="140" rx="7" ry="9" fill="#ffffff" stroke="#404040" stroke-width="1"/>
+  <ellipse cx="102" cy="139" rx="3.5" ry="4.5" fill="#000000"/>
+  <circle cx="104" cy="136" r="1.8" fill="#ffffff"/>
+  <ellipse cx="116" cy="140" rx="7" ry="9" fill="#ffffff" stroke="#404040" stroke-width="1"/>
+  <ellipse cx="118" cy="139" rx="3.5" ry="4.5" fill="#000000"/>
+  <circle cx="120" cy="136" r="1.8" fill="#ffffff"/>
+
+  <!-- Eyebrows -->
+  <path d="M 92 129 Q 100 123 108 129" fill="none" stroke="#606060" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 108 129 Q 116 123 124 129" fill="none" stroke="#606060" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Smile -->
+  <path d="M 98 154 Q 108 164 118 154" fill="none" stroke="#404040" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Content panel (sunken) -->
+  <rect x="160" y="92" width="722" height="150" fill="#ffffff"/>
+  <line x1="160" y1="92" x2="882" y2="92" stroke="#808080" stroke-width="1"/>
+  <line x1="160" y1="92" x2="160" y2="242" stroke="#808080" stroke-width="1"/>
+  <line x1="882" y1="92" x2="882" y2="242" stroke="#ffffff" stroke-width="1"/>
+  <line x1="160" y1="242" x2="882" y2="242" stroke="#ffffff" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="184" y="168" fill="#000080" font-size="84" font-weight="bold" letter-spacing="-2" font-family="'Arial Black', 'Impact', monospace">karl</text>
+
+  <!-- Tagline -->
+  <text x="184" y="200" fill="#000000" font-size="15">Autonomous multi-agent development loop</text>
+</svg>

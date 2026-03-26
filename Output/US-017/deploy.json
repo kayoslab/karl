@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "Test results report pass with no failures. Plan aligns with US-017 acceptance criteria: review.json added to CLIPPY_EXPECTED_ARTIFACTS, planning_persist_review function added, artifacts stored under Output/<ticket_id>/ (append-safe, per-ticket isolation), and coverage added in tests/artifacts.bats and tests/planning.bats. ADR-001 filesystem contract is respected (all artifacts under Output/). No regressions detected. Approved for merge."
+}

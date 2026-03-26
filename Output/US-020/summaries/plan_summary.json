@@ -1,0 +1,63 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Audit lib/rate_limit.sh: verify rate_limit_detect regex, rate_limit_parse_wait patterns, rate_limit_backoff formula, and claude_invoke retry loop match all acceptance criteria. Confirm claude is invoked with -p --dangerously-skip-permissions.",
+      "files": [
+        "lib/rate_limit.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Audit all agent caller libs to confirm they pipe prompts through claude_invoke instead of calling claude directly. Fix any direct claude calls.",
+      "files": [
+        "lib/planning.sh",
+        "lib/architect.sh",
+        "lib/tester.sh",
+        "lib/rework.sh",
+        "lib/deploy.sh",
+        "lib/tech.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Source lib/rate_limit.sh in clippy.sh if not already present so CLIPPY_RATE_LIMIT_BACKOFF_BASE and CLIPPY_RATE_LIMIT_MAX_RETRIES are exported at startup.",
+      "files": [
+        "clippy.sh"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Run the full test suite (bats tests/) and fix any failing tests in tests/rate_limit.bats. Ensure the make_rate_limit_stub never emits 'rate limit' text without exit code != 0 to avoid detection loops.",
+      "files": [
+        "tests/rate_limit.bats"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Verify tests/loop.bats and tests/planning.bats still pass after rate_limit integration — no test regressions.",
+      "files": [
+        "tests/loop.bats",
+        "tests/planning.bats"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "All tests in tests/rate_limit.bats must pass: rate_limit_detect (positive/negative/case-insensitive), rate_limit_parse_wait (seconds/minutes/fallback), rate_limit_backoff (base * attempt), claude_invoke (success, non-rate-limit failure no-retry, rate-limit retry then success, max-retries exceeded, stderr logging).",
+    "Set CLIPPY_RATE_LIMIT_BACKOFF_BASE=0 in every test setup to prevent real sleeps.",
+    "Use counter file pattern for multi-call stubs — never pipe to run; use run function <<< input pattern.",
+    "Stub claude must NOT emit 'rate limit' text for non-rate-limit failure paths to avoid triggering detection loop.",
+    "Smoke-test claude_invoke integration: at least one test in tests/planning.bats or tests/architect.bats should confirm claude is called via claude_invoke.",
+    "Typecheck: run shellcheck on lib/rate_limit.sh and all modified libs."
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The make_rate_limit_stub in tests/rate_limit.bats uses exit code 0 with rate-limit text — claude_invoke now only retries on non-zero exit + rate-limit content, so stubs must exit non-zero to trigger retry path.",
+    "Direct claude calls in agent libs that bypass claude_invoke will silently skip rate-limit handling — must audit all six libs.",
+    "bash 3.2 (macOS default) compatibility: no associative arrays, no mapfile; existing patterns already work around this."
+  ],
+  "steps_count": 5,
+  "testing_count": 6
+}

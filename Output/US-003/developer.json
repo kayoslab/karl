@@ -1,0 +1,1 @@
+{"files_changed":["karl.sh"],"summary":"Wired git_ensure_repo into the karl.sh startup sequence: added source for lib/git.sh, added --auto-init-git flag, and call git_ensure_repo after workspace_init and before lock_acquire so the git repo check occurs before any branch creation or ticket execution.","ready_for_test":true}

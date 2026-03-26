@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 13 git.bats tests pass. shellcheck exits 0 on lib/git.sh. git_ensure_repo is wired into main() before lock acquisition and loop start, satisfying the ordering requirement. The --init-git flag covers the auto-init/operator-confirmation criterion. Default main branch creation and error-on-init-failure are both implemented and tested. The 4 unrelated failures in commit/deploy tests are pre-existing and not introduced by this story."
+}

@@ -1,0 +1,5 @@
+{
+  "files_changed": [],
+  "summary": "All documentation and example workspace files already exist and all 27 docs.bats tests pass: README.md with all required sections, docs/architecture.svg, example/Agents/ with 7 agent files, example/Input/prd.json with valid ticket schema, example/CLAUDE.md, and example/Output/ADR/.",
+  "ready_for_test": true
+}

@@ -1,0 +1,6 @@
+{
+  "ticket_id": "US-001",
+  "max_retries": 10,
+  "count": 10,
+  "message": "Retry limit reached: 10 rework cycles completed for ticket US-001. Maximum is 10."
+}

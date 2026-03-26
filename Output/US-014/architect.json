@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "ADR-004 fully covers US-014. The three-check gate (clean_tree → main_exists → no_conflicts), merge_check.json artifact schema, [merge]-prefixed logging, and failure recovery via implicit retry are all documented. Plan aligns with ADR-004 exactly. One note: ADR-004 specifies artifact path as Output/ADR/merge_check.json — verify lib/merge.sh writes there, not Output/<ticket_id>/merge_check.json as stated in the plan's testing recommendations. No architectural gaps."
+}

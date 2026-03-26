@@ -1,0 +1,452 @@
+{
+  "project": "karl",
+  "branchName": "feature/karl",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Bootstrap and validate karl workspace structure",
+      "description": "As a developer, I need karl to initialize and validate the required Agents, Input, and Output folders, with ADR records stored in Output/ADR, so the workflow has a predictable filesystem contract.",
+      "acceptanceCriteria": [
+        "Required folders exist or are created: Agents, Input, Output, Output/ADR",
+        "Input supports prd.json and CLAUDE.md as canonical inputs",
+        "Output supports progress.md and tech.md as canonical outputs",
+        "Startup fails with a clear error when required files are missing after bootstrap",
+        "Filesystem validation behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "ADR folder moved under Output so all durable runtime artifacts live together."
+    },
+    {
+      "id": "US-002",
+      "title": "Single-instance protection using LOCK file",
+      "description": "As the karl runtime, I need to prevent concurrent runs in the same repository so that multiple instances cannot corrupt branch state, PRD state, or output artifacts.",
+      "acceptanceCriteria": [
+        "On startup karl checks for a LOCK file in the project root or configured workspace root",
+        "If a LOCK file exists karl prints a clear terminal warning that another instance may already be running",
+        "karl exits without starting the loop when a LOCK file exists unless an explicit override flag is used",
+        "karl creates the LOCK file when a run starts successfully",
+        "karl removes the LOCK file on clean shutdown",
+        "Stale locks can be overridden deliberately by the operator",
+        "LOCK behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Implements simple local mutual exclusion using a file named LOCK."
+    },
+    {
+      "id": "US-003",
+      "title": "Ensure git repository exists or initialize one",
+      "description": "As the karl runtime, I need to verify that the project directory is a git repository so that branch-based development and commits can work. If no repository exists, karl should warn and initialize one.",
+      "acceptanceCriteria": [
+        "On startup karl checks whether the current working directory contains a git repository",
+        "If no repository exists, karl prints a clear warning explaining that git is required for branch-based workflow",
+        "karl initializes a new git repository when auto-init is enabled or the operator confirms initialization",
+        "A default main branch is created if none exists",
+        "Initialization failure stops execution with a clear error message",
+        "The check occurs before any branch creation or ticket execution",
+        "Behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Required prerequisite for gitflow branch creation and commit workflow."
+    },
+    {
+      "id": "US-004",
+      "title": "Validate Claude CLI installation before loop start",
+      "description": "As a user, I want karl to verify Claude CLI is installed and callable before starting so that the loop fails fast with actionable guidance.",
+      "acceptanceCriteria": [
+        "Startup checks that Claude CLI binary is installed and executable",
+        "Startup checks return a clear actionable error when Claude is missing",
+        "The loop does not begin when Claude validation fails",
+        "Validation result is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Hard failure when Claude is not installed."
+    },
+    {
+      "id": "US-005",
+      "title": "Read Ralph-style prd.json and select highest-priority unfinished ticket",
+      "description": "As the planning system, I need to parse a Ralph-style prd.json and choose the next story with the highest priority where passes=false.",
+      "acceptanceCriteria": [
+        "karl reads Input/prd.json in a Ralph-compatible structure",
+        "karl selects the unfinished story with the lowest numeric priority value among passes=false items",
+        "The runtime exits cleanly with a clear message when all stories pass",
+        "Malformed PRD content produces a clear validation error",
+        "Selection behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Preserves the Ralph contract while enabling multi-agent execution."
+    },
+    {
+      "id": "US-006",
+      "title": "Create deterministic gitflow feature branch from selected ticket",
+      "description": "As the loop, I need to create and switch to a deterministic feature branch derived from the selected ticket so that each iteration is isolated and traceable in git history.",
+      "acceptanceCriteria": [
+        "Selected story produces a deterministic gitflow feature branch name using the ticket id and a sanitized title",
+        "Branch format follows feature/<ticket-id>-<slug>",
+        "Given the same ticket, branch name generation always returns the same string",
+        "The branch is created from main or reused if it already exists for the active ticket",
+        "Branch creation failures stop the iteration with a clear error",
+        "Branch naming behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Deterministic branch names reduce ambiguity for agents and recovery flows."
+    },
+    {
+      "id": "US-007",
+      "title": "Load agent registry from markdown files in Agents folder",
+      "description": "As the orchestrator, I need to load agent definitions from markdown files in the Agents folder so that karl can run as a multi-agent workflow.",
+      "acceptanceCriteria": [
+        "karl reads markdown-based agent definitions from Agents/",
+        "Missing required agents A-F produce a clear validation error",
+        "Agent registry resolves these roles: Architect, Planner, Reviewer, Tester, Developer, Deployment",
+        "Agent prompts can be composed with ticket, plan, ADR, tech, and test context",
+        "Registry loading is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Major architectural difference from Ralph."
+    },
+    {
+      "id": "US-008",
+      "title": "Define agent prompt contract and structured outputs",
+      "description": "As the orchestrator, I need each agent markdown definition to follow a clear contract for inputs, responsibilities, and output format so that multi-agent handoffs remain deterministic and parseable.",
+      "acceptanceCriteria": [
+        "Each required agent markdown file defines the agent role, expected inputs, expected outputs, and constraints",
+        "Architect, Planner, Reviewer, Tester, Developer, Deployment agents each have a documented prompt contract",
+        "Agent outputs use a structured format that downstream steps can validate and consume",
+        "Prompt contract validation fails clearly when a required contract field is missing",
+        "Structured output behavior is covered by automated tests",
+        "Use the current /Agent folder as templates for defining the expected markdown structure and content for each agent role",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Reduces drift and ambiguity across agent handoffs."
+    },
+    {
+      "id": "US-009",
+      "title": "Implement planning and review loop between agents A and B",
+      "description": "As the workflow, I need a planning phase where agent A creates a plan and test recommendations, and agent B reviews that plan before execution starts.",
+      "acceptanceCriteria": [
+        "Planning agent A creates a structured implementation plan for the selected story",
+        "The plan explicitly includes testing recommendations",
+        "Reviewing agent B can approve or return actionable feedback on the plan",
+        "Planning agent A can incorporate review feedback and produce a revised plan",
+        "Final approved plan is persisted in Output for iteration traceability",
+        "Commits are created for plan and review artifacts to link them to git history",
+        "Workflow behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Core coordination flow before architecture, test, and implementation."
+    },
+    {
+      "id": "US-010",
+      "title": "Implement architecture review and ADR maintenance",
+      "description": "As the workflow, I need the architect agent to validate plans against ADRs and tech.md and create or update ADR records when architectural changes are required.",
+      "acceptanceCriteria": [
+        "Architect agent C can read Output/ADR/*.md and Output/tech.md",
+        "Architect agent determines whether the selected change requires a new ADR or an update to an existing ADR",
+        "ADR changes are written in a consistent format and stored in Output/ADR",
+        "Architect output is traceable to the active ticket",
+        "No ADR change is created when the current architecture already covers the plan",
+        "Commits are created if changes are made to ADR records or tech.md to link them to git history",
+        "ADR workflow is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Keeps architectural records consistent and concise."
+    },
+    {
+      "id": "US-011",
+      "title": "Implement test-first handoff from agent D to agent E",
+      "description": "As the workflow, I need the test agent to create implementation tests before development so that the developer agent works against explicit validation.",
+      "acceptanceCriteria": [
+        "Test agent D generates or updates tests from the approved plan before implementation starts",
+        "Generated tests are written into the Output codebase in expected project locations",
+        "Developer agent E receives the approved plan and test context",
+        "Commits are created if tests are added or updated to link them to git history",
+        "The workflow records which tests were introduced or changed for the ticket",
+        "Test generation flow is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "Encodes the intended test-first behavior."
+    },
+    {
+      "id": "US-012",
+      "title": "Implement configurable per-ticket iteration retry limit",
+      "description": "As an operator, I need the developer and test rework loop to stop after a configurable number of retries so that karl does not get stuck indefinitely on a single ticket.",
+      "acceptanceCriteria": [
+        "karl accepts a command line parameter for the maximum number of rework cycles per ticket",
+        "The default maximum is 10 when the parameter is not provided",
+        "The retry counter applies to the developer and tester rework loop for a single active ticket",
+        "When the limit is reached the iteration stops with a clear terminal message and durable artifact explaining the failure",
+        "The configured retry limit is visible in runtime logs for the active ticket",
+        "Retry-limit behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Implements timeout protection as a configurable runtime parameter rather than a hardcoded constant."
+    },
+    {
+      "id": "US-013",
+      "title": "Implement developer and test rework loop until green or limit reached",
+      "description": "As the workflow, I need the developer and test agents to iterate until tests are green, while allowing the test agent to fix incorrect tests when appropriate.",
+      "acceptanceCriteria": [
+        "Agent E implements the selected story based on the approved plan",
+        "Agent D runs tests after implementation and reports failures back to agent E",
+        "When a failure is caused by an incorrect test, agent D can correct the test and rerun it",
+        "When a failure is caused by implementation, agent E updates the code and reruns the checks",
+        "The iteration stops only when all required tests for the ticket are green or the configured retry limit is reached",
+        "On completion a commit is created that includes the final implementation and test changes linked to the active ticket",
+        "Rework-loop behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "Critical for autonomous multi-agent convergence."
+    },
+    {
+      "id": "US-014",
+      "title": "Implement safe merge policy before merging to main",
+      "description": "As the deployment workflow, I need to verify repository safety conditions before merging so that autonomous branch management does not leave the repository in a broken state.",
+      "acceptanceCriteria": [
+        "Before merge karl verifies the working tree is clean except for intended committed changes",
+        "All open changes made by previous agents are committed before merge",
+        "Before merge karl verifies main exists and is checked against the latest local state",
+        "Before merge karl verifies the active feature branch can merge or rebase cleanly onto main",
+        "If merge conflicts occur karl tries to resolve them automatically or stops with a clear error message if it cannot",
+        "Merge checks are logged for the active ticket",
+        "Merge behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Separates merge safety from general deployment quality gates."
+    },
+    {
+      "id": "US-015",
+      "title": "Run deployment gate and enforce quality requirements",
+      "description": "As the deployment agent, I need to verify that tests, quality gates, and ADR expectations are satisfied before code is committed and merged.",
+      "acceptanceCriteria": [
+        "Deployment agent F verifies all required tests pass",
+        "Deployment agent F verifies configured quality gates pass, including typecheck and project-defined checks",
+        "Deployment agent F validates implementation consistency with relevant ADRs",
+        "If any gate fails, the ticket is sent back to the developer workflow instead of merging",
+        "Gate decisions are logged for the active ticket and a commit is created for any gate-related changes to link them to git history",
+        "Deployment-gate behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "Final release control step of each iteration."
+    },
+    {
+      "id": "US-016",
+      "title": "Commit, merge to main, and update PRD and progress after successful iteration",
+      "description": "As the workflow, I need successful work to be committed, merged, and recorded so that future iterations inherit durable state from git history, progress.md, and prd.json.",
+      "acceptanceCriteria": [
+        "After a successful iteration, all changes are committed with a message that includes the ticket id and summary",
+        "Selected story is updated to passes=true in Input/prd.json after merge success",
+        "Output/progress.md is appended with a concise iteration summary and learnings",
+        "The feature branch is cleaned up after merge",
+        "Commit-and-merge behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "Persists durable memory similarly to Ralph."
+    },
+    {
+      "id": "US-017",
+      "title": "Persist structured iteration artifacts for traceability",
+      "description": "As an operator, I need karl to persist plan, review, architecture, test, and deployment artifacts in a structured directory layout so that each ticket execution can be audited and resumed safely.",
+      "acceptanceCriteria": [
+        "Output contains structured artifact directories for plan, review, architecture, tests, implementation, and deployment records",
+        "Each iteration stores structured artifacts in Output linked to the active ticket id",
+        "Output/ADR is used as the canonical ADR location",
+        "Artifact persistence is append-safe and does not overwrite unrelated ticket history",
+        "Stored artifacts are concise enough for repeated agent reuse",
+        "Artifact-persistence behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "Adds the structured artifact format you requested."
+    },
+    {
+      "id": "US-018",
+      "title": "Apply artifact summarization policy for fresh-agent iterations",
+      "description": "As the workflow, I need durable artifacts to be summarized before storage so that each new ticket iteration can start with fresh agents and a concise context footprint similar to Ralph.",
+      "acceptanceCriteria": [
+        "Plans are summarized before being stored as durable artifacts",
+        "Review feedback is summarized into concise actionable output",
+        "Test results are summarized into concise status and failure context",
+        "Only information required for future file-based reuse is retained in durable artifacts",
+        "Summaries preserve references to source artifacts or filenames where deeper detail exists",
+        "Summarization behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "Supports the clarified model of fresh agents with no cross-ticket context reuse."
+    },
+    {
+      "id": "US-019",
+      "title": "Keep terminal loop running continuously",
+      "description": "As a user, I want karl to continue running iteration after iteration until interrupted so that it behaves as a persistent autonomous loop.",
+      "acceptanceCriteria": [
+        "Starting karl from the terminal begins a continuous loop",
+        "After a successful ticket completion, karl automatically selects the next highest-priority unfinished ticket",
+        "When no unfinished tickets remain, karl exits cleanly with a clear status message",
+        "Unexpected iteration errors are logged without corrupting PRD state",
+        "Loop-control behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Main runtime behavior requested by the user."
+    },
+    {
+      "id": "US-020",
+      "title": "Handle Claude rate-limit responses by waiting and resuming",
+      "description": "As a user, I want karl to detect Claude rate-limit responses, wait until reset, and then continue so that the loop can run unattended for long periods.",
+      "acceptanceCriteria": [
+        "karl detects Claude CLI responses indicating usage or rate limits were reached",
+        "When reset timing can be determined, karl waits until the reset point before retrying",
+        "When reset timing cannot be determined, karl falls back to a configurable backoff strategy",
+        "Rate-limit events are logged without losing iteration state",
+        "Resume behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": "Required for non-ending loop behavior with Claude."
+    },
+    {
+      "id": "US-021",
+      "title": "Generate first-run tech.md questionnaire and recommendations",
+      "description": "As a user starting karl for the first time, I want an agent to inspect the PRD and ask concise technology questions with recommendations so that tech.md can be created deliberately.",
+      "acceptanceCriteria": [
+        "On first run without Output/tech.md, karl triggers a tech-discovery flow before normal ticket execution",
+        "An agent inspects Input/prd.json and asks clear focused technology questions",
+        "The questions include recommendations rather than only open prompts",
+        "The resulting Output/tech.md is concise and optimized for low context-window usage",
+        "Subsequent runs reuse the existing tech.md unless explicitly refreshed",
+        "First-run tech-discovery behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": "Concise tech decisions generated from a first-run interaction."
+    },
+    {
+      "id": "US-022",
+      "title": "Provide concise CLI logging and operator controls",
+      "description": "As an operator, I want clear terminal output and basic run controls so that I can understand what karl is doing without wasting context or attention.",
+      "acceptanceCriteria": [
+        "CLI output shows current ticket, current agent phase, branch name, retry count, and final iteration result",
+        "Logs clearly distinguish normal progress, warnings, and blocking failures",
+        "A dry-run mode can validate setup and show the next ticket without modifying code",
+        "A configurable max-retries or max-rework setting exists for failed iterations",
+        "CLI-control behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": "Operationally useful, but not foundational."
+    },
+    {
+      "id": "US-023",
+      "title": "Add karl clean command for repository recovery",
+      "description": "As an operator, I need a karl clean command that resets the repository to a safe baseline after a broken ticket implementation so that development can continue from a clean state.",
+      "acceptanceCriteria": [
+        "karl exposes a clean command through the CLI, for example karl clean",
+        "The clean command clears uncommitted changes in the working tree after explicit safety confirmation or force flag",
+        "The clean command checks out main",
+        "The clean command deletes the previously active feature branch when it is safe to do so",
+        "The clean command removes stale runtime lock state and leaves the workspace in a clean recoverable state",
+        "The clean command prints clear terminal output describing what was cleaned and what remains",
+        "Clean-command behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": "Provides an operator recovery path when autonomous work leaves the repo in a bad state."
+    },
+    {
+      "id": "US-024",
+      "title": "Provide open-source onboarding: example workspace, README, and visual project overview",
+      "description": "As an open-source user, I want karl to include a comprehensive README, example project workspace, and visual architecture overview so that developers can quickly understand how to install, configure, and run karl without reading internal code.",
+      "acceptanceCriteria": [
+        "Repository contains a comprehensive README.md explaining the purpose of karl and how it relates to the Ralph-style development loop",
+        "README includes installation instructions for prerequisites such as Claude CLI and git",
+        "README explains the folder structure: Agents, Input, Output, Output/ADR, and example artifacts",
+        "README documents the multi-agent workflow including planner, reviewer, architect, tester, developer, and deployment agents",
+        "README documents CLI commands including run, clean, and configuration parameters such as retry limits",
+        "README includes a visually appealing architecture diagram illustrating the karl loop and multi-agent workflow",
+        "Repository includes an example workspace with sample Agents markdown files, Input/prd.json, CLAUDE.md, and Output directory structure",
+        "Example prd.json demonstrates at least one simple feature ticket so users can see how karl operates",
+        "Documentation explains how to extend agents and modify prompts",
+        "All documentation renders correctly on GitHub",
+        "Documentation quality and example workspace are covered by automated validation where feasible",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": "Ensures the project is usable as an open-source tool. The README should include a diagram (e.g., SVG or PNG) showing the karl multi-agent loop."
+    },
+    {
+      "id": "US-027",
+      "title": "Reduce logging and add parameter to enable verbose mode",
+      "description": "As a user, I want karl to have concise logging by default and an option to enable verbose logging so that I can choose the level of detail I see in the terminal.",
+      "acceptanceCriteria": [
+        "By default, karl logs only high-level progress and important events to the terminal",
+        "karl accepts a command line parameter (e.g., --verbose) that enables detailed logging of agent outputs, decisions, and internal state changes",
+        "Verbose logging includes timestamps and ticket identifiers for easier debugging",
+        "The logging level can be changed without modifying code, only through CLI parameters",
+        "Logging behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 27,
+      "passes": true,
+      "notes": "Improves usability by reducing noise in the terminal while still allowing access to detailed logs when needed for debugging or insight into agent behavior."
+    },
+    {
+      "id": "US-030",
+      "title": "Implement a multi instance version of karl that supports multiple concurrent loops with isolated state",
+      "description": "As an advanced user, I want karl to support multiple concurrent instances with isolated state so that I can run separate loops in the same repository without interference.",
+      "acceptanceCriteria": [
+        "karl can be configured to run multiple instances simultaneously with isolated state and branch management",
+        "Each instance uses a unique identifier to manage its own LOCK file, branches, and output artifacts",
+        "Ensure that no instances are operating on the same ticket or branch to prevent state corruption",
+        "Instances can run independently without interfering with each other's state or branches",
+        "Documentation explains how to set up and manage multiple karl instances in the same repository",
+        "By default this is not enabled to avoid complexity for new users, but can be turned on with a CLI parameter (e.g., --instances <number>)",
+        "The dashboard displays the status of all active instances when multi-instance mode is enabled",
+        "Multi-instance behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 30,
+      "passes": true,
+      "notes": "Provides resilience against unexpected issues and allows users to pause and resume work without losing progress."
+    }
+  ]
+}

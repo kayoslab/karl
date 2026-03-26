@@ -1,0 +1,1 @@
+{"decision":"pass","gates_checked":["tests","typecheck"],"failures":[],"notes":"All 29 architect.bats tests pass, agents.bats real-file contract validation passes, shellcheck exits 0 with no warnings. Acceptance criteria met: ADR read/write, traceability to ticket, no spurious ADR creation, consistent format."}

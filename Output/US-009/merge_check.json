@@ -1,0 +1,10 @@
+{
+  "ticket_id": "US-009",
+  "feature_branch": "feature/US-009-implement-planning-and-review-loop-between-agents-a-and-b",
+  "checks": {
+    "clean_tree": "pass",
+    "main_exists": "pass",
+    "no_conflicts": "pass"
+  },
+  "all_passed": true
+}

@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 6 required agent files have complete 4-field prompt contracts. shellcheck exits 0 on lib/agents.sh. Tester reports full pass with no failures. Six real-agent contract validation tests confirmed present and passing in tests/agents.bats. US-008 acceptance criteria fully met."
+}

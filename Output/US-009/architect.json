@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR needed. ADR-003 already establishes planner and reviewer as required roles with their file locations and frontmatter contract. The plan is a targeted fix: rename test stub files from planning.md/reviewing.md to planner.md/reviewer.md to align with the role names already codified in ADR-003. Verify Agents/planner.md and Agents/reviewer.md both carry all four required frontmatter fields (role, inputs, outputs, constraints) before running tests — agents_validate_contract will reject either file if any field is absent."
+}

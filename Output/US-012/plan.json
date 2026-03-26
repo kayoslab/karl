@@ -1,0 +1,55 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify clippy.sh already parses --max-retries <n> with default 10 and passes MAX_RETRIES to loop_run. Confirm the runtime log line '[clippy] Starting main loop (max-retries=${MAX_RETRIES})...' is present. No changes expected; this is an audit step.",
+      "files": ["clippy.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Verify lib/retry.sh implements retry_init, retry_get_count, retry_increment, retry_check, and retry_exceeded_persist. Confirm retry_exceeded_persist writes Output/<ticket_id>/retry_exceeded.json with a human-readable message field and max_retries/count fields.",
+      "files": ["lib/retry.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Verify lib/rework.sh's rework_loop accepts max_retries as parameter, calls retry_check before each cycle, logs '[rework] Starting rework loop for [<id>] (max-retries=<n>)...', calls retry_exceeded_persist and returns 1 when the limit is reached, and logs a clear terminal message 'Retry limit reached'.",
+      "files": ["lib/rework.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Verify lib/loop.sh's loop_run_iteration logs '[clippy] Retry limit for this ticket: <max_retries>' and passes max_retries to rework_loop. Verify loop_run accepts max_retries and threads it through.",
+      "files": ["lib/loop.sh"]
+    },
+    {
+      "step": 5,
+      "action": "Ensure tests/cli.bats contains tests for: --max-retries is accepted without error, --max-retries logs configured value in dry-run output, and --max-retries requires an argument. Add any missing tests.",
+      "files": ["tests/cli.bats"]
+    },
+    {
+      "step": 6,
+      "action": "Ensure tests/rework.bats contains tests for: rework_loop returns 1 when retry limit is reached at start, persists retry_exceeded.json on limit, prints 'Retry limit reached' message, and respects a custom max_retries value (e.g., 2). Fix any malformed test that passes wrong argument order to rework_loop.",
+      "files": ["tests/rework.bats"]
+    },
+    {
+      "step": 7,
+      "action": "Run the full test suite (bats tests/) and confirm all tests pass including retry-related tests in tests/retry.bats, tests/rework.bats, tests/cli.bats, and tests/loop.bats.",
+      "files": ["tests/retry.bats", "tests/rework.bats", "tests/cli.bats", "tests/loop.bats"]
+    }
+  ],
+  "testing_recommendations": [
+    "tests/cli.bats: assert '--max-retries 5' is accepted (exit 0 in dry-run mode)",
+    "tests/cli.bats: assert '--max-retries 7' appears in log output as 'max-retries=7'",
+    "tests/cli.bats: assert '--max-retries' with no value exits non-zero",
+    "tests/rework.bats: assert rework_loop returns 1 when retry_count equals max_retries at loop entry",
+    "tests/rework.bats: assert retry_exceeded.json is written when limit is reached",
+    "tests/rework.bats: assert output contains 'Retry limit reached' when limit is hit",
+    "tests/rework.bats: assert rework_loop with max_retries=2 stops after 2 failure cycles",
+    "tests/retry.bats: assert retry_exceeded_persist JSON contains 'max_retries', 'count', and 'message' fields",
+    "tests/loop.bats: assert loop_run_iteration logs 'Retry limit for this ticket: <n>' with the configured value"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The rework.bats test 'rework_loop respects custom max retries of 1' has a malformed argument list (TICKET_ID instead of WORKSPACE_ROOT in position 1, TICKET_JSON in plan position) — it passes only because it uses '|| true'. This test should be fixed to actually verify the max_retries=1 behavior.",
+    "If planning_run_loop also receives max_retries (visible in loop.sh line 62), confirm that is intentional and that planning loop iteration is distinct from rework loop iteration — mixing the two counters could cause unexpected early exit."
+  ]
+}

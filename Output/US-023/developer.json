@@ -1,0 +1,5 @@
+{
+  "files_changed": [],
+  "summary": "All implementation for US-023 (karl clean command) was already complete: lib/clean.sh with 5 functions, 27 unit tests in tests/clean.bats, 8 CLI integration tests in tests/cli.bats, --clean/--force argument handling in karl.sh, and US-023 passes=true in Input/prd.json.",
+  "ready_for_test": true
+}

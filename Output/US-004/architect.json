@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR needed. The validation pattern (command -v claude, hard exit before workspace init) is an operational prerequisite, not an architectural decision requiring documentation. ADR-001 already establishes that external dependencies (claude CLI, git, jq) are required at runtime. The only gap is the missing integration test in tests/cli.bats confirming end-to-end exit behaviour when claude is absent — add that test and the story is complete. Ensure the stub dir for the integration test is truly empty (no claude binary) so PATH override cleanly excludes it."
+}

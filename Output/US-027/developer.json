@@ -1,0 +1,9 @@
+{
+  "files_changed": [
+    "lib/logging.sh",
+    "karl.sh",
+    "lib/loop.sh",
+    "tests/loop.bats"
+  ],
+  "summary": "Created lib/logging.sh with log_info (always prints) and log_verbose (prints only when KARL_VERBOSE=true, with timestamp and ticket id prefix). Updated karl.sh to source logging.sh first, add --verbose flag to parse_args and usage, and use log_info for the main ready message. Updated lib/loop.sh to use log_verbose for internal pipeline step echoes and log_info for high-level messages (selected story, retry limit, ticket complete, all stories complete). Updated tests/loop.bats setup to source logging.sh so log_info/log_verbose are available. All 9 logging tests and 4 new cli.bats --verbose tests pass; shellcheck passes with no errors."
+}

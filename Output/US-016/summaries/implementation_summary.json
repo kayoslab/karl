@@ -1,0 +1,12 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [
+    "lib/commit.sh",
+    "lib/deploy.sh",
+    "tests/commit.bats"
+  ],
+  "files_count": 3,
+  "ready_for_test": true,
+  "summary": "commit_finalize already implements correct sequencing: merge first, then commit_update_prd, then append progress.md — PRD and progress are never modified if the merge fails. deploy_gate does not call commit_update_prd. Merge-failure regression tests are present in tests/commit.bats."
+}

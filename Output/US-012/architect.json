@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR required. The retry limit is a runtime configuration parameter, not an architectural contract change. The retry_exceeded.json artifact written to Output/<ticket_id>/ is consistent with ADR-001's Output/ layout. Ensure the artifact path uses the ticket ID subdirectory as established by ADR-001 — do not write directly to Output/. The --max-retries flag is a CLI concern only; it does not affect the agent registry (ADR-003) or branch naming (ADR-002). One risk from the plan worth noting: if planning_run_loop also receives max_retries, confirm the counter is scoped per-loop and not shared with the rework loop — mixing iteration counters across loop types would be an architectural smell worth revisiting in a future ADR if it becomes a pattern."
+}

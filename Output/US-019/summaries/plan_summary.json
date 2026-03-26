@@ -1,0 +1,39 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Fix test 22 in tests/loop.bats: add plan.json creation inside the planning_run_loop() stub in the 'loop_run_iteration syncs stale progress.md from main before committing' test. Stub should mkdir -p the Output/US-019 dir and write a minimal valid plan.json, matching the pattern used in tests 16 and 21.",
+      "files": [
+        "tests/loop.bats"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Run `bats tests/loop.bats` and verify all 23 tests pass.",
+      "files": [
+        "tests/loop.bats"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Run the full test suite (`bats tests/`) to confirm no regressions introduced.",
+      "files": [
+        "tests/"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "All 23 loop.bats tests must pass after the fix — specifically test 22 which is currently failing.",
+    "No new tests need to be written; the acceptance criteria are already fully covered by the existing 23 tests.",
+    "Run the full bats suite to confirm no regressions across other test files."
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The planning_run_loop stub fix must also ensure the plan_json_content read succeeds — the stub should write valid JSON to Output/US-019/plan.json, not an empty file.",
+    "No other acceptance criteria are unmet; the risk of over-engineering (adding unnecessary code to loop.sh) should be avoided."
+  ],
+  "steps_count": 3,
+  "testing_count": 3
+}

@@ -1,0 +1,51 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Extend agents_compose_prompt in lib/agents.sh to support three additional context variables: implementation, failures, and mode. Add extraction from context_json and substitution of {{implementation}}, {{failures}}, and {{mode}} placeholders using the same ENVIRON/awk pattern already in place for {{ticket}}, {{plan}}, {{adr}}, {{tech}}, {{tests}}.",
+      "files": ["lib/agents.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Rewrite Agents/tester.md with proper YAML frontmatter delimiters (--- ... ---). Update inputs to include: ticket, plan, tests, implementation, failures, mode. Update outputs to include failure_source. Update constraints to require failure_source when test_results is fail. Add {{implementation}}, {{failures}}, and {{mode}} placeholders to the prompt body so rework_verify_agent and rework_tester_fix_agent receive full context.",
+      "files": ["Agents/tester.md"]
+    },
+    {
+      "step": 3,
+      "action": "Update Agents/developer.md to add failures and mode to the inputs field and add {{failures}} and {{mode}} placeholders to the prompt body so rework_developer_fix_agent delivers failure context to the developer agent.",
+      "files": ["Agents/developer.md"]
+    },
+    {
+      "step": 4,
+      "action": "Add tests to tests/agents.bats covering the three new substitutions: {{implementation}} is rendered from context_json.implementation, {{failures}} is rendered from context_json.failures, and {{mode}} is rendered from context_json.mode. Also add a test that agents_compose_prompt leaves new placeholders empty when their context keys are absent.",
+      "files": ["tests/agents.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Verify tests/rework.bats covers all six acceptance criteria: initial implementation via developer_run, verification via rework_verify_agent, tester-fix path (failure_source=test), developer-fix path (failure_source=implementation), green-on-first-verify exit, and retry-limit exit. Add any missing coverage for edge cases (e.g. missing-fields validation in verification output).",
+      "files": ["tests/rework.bats"]
+    },
+    {
+      "step": 6,
+      "action": "Run bash -n on all modified files (lib/agents.sh, lib/rework.sh, lib/tester.sh) to confirm syntax is valid and typecheck passes.",
+      "files": ["lib/agents.sh", "lib/rework.sh", "lib/tester.sh"]
+    }
+  ],
+  "testing_recommendations": [
+    "In tests/agents.bats: add @test for {{implementation}} substitution via agents_compose_prompt with a context containing an implementation key",
+    "In tests/agents.bats: add @test for {{failures}} substitution",
+    "In tests/agents.bats: add @test for {{mode}} substitution",
+    "In tests/agents.bats: add @test that agents_compose_prompt leaves {{implementation}}, {{failures}}, {{mode}} empty when context keys are absent",
+    "In tests/agents.bats: add @test that the real Agents/tester.md includes {{implementation}} and {{failures}} placeholders in its body",
+    "In tests/agents.bats: add @test that the real Agents/developer.md includes {{failures}} placeholder in its body",
+    "Ensure tests/rework.bats make_fail_then_pass_stub and make_test_fail_then_fix_stub stubs reflect the full loop (3 claude calls each)",
+    "Confirm all existing rework.bats tests still pass after agents_compose_prompt is extended",
+    "Run full bats suite: bats tests/ to confirm 0 failures"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The awk str_replace function in agents_compose_prompt processes lines one at a time; multi-line implementation or failures values that span template lines will render correctly only within each line — but since these values are passed as JSON strings they are single-line after jq -r extraction, so no risk",
+    "Extending agents_compose_prompt adds three new ENVIRON variables; if a real agent template contains a literal {{implementation}}, {{failures}}, or {{mode}} for purposes other than substitution it will be unexpectedly replaced — review all existing Agents/*.md files to confirm no collisions",
+    "Agents/tester.md currently lacks --- frontmatter delimiters, meaning agents_get_prompt returns metadata lines (role:, inputs:, etc.) as part of the rendered prompt body; adding --- delimiters corrects this but changes the prompt content sent to Claude, which is a behavioural change worth noting"
+  ]
+}

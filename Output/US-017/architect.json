@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "The plan extends the existing artifacts system by adding review.json — no new architectural patterns are introduced. ADR-001 already covers Output/ as the canonical artifact location; the per-ticket subdirectory layout (Output/<ticket_id>/) is an existing runtime convention, not a new contract. Confirm that planning_persist_review uses the same mkdir -p + write pattern as planning_persist to stay consistent. Ensure artifacts_validate_complete is updated in the same commit as CLIPPY_EXPECTED_ARTIFACTS to avoid a window where validation rejects valid artifact sets."
+}

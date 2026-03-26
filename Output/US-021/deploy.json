@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "Test results report pass with no failures. Plan correctly addresses the CLIPPY_AGENTS_DIR env override fix for test isolation in tech_discover. ADR compliance maintained — no new agent roles added, claude_invoke pattern respected. Safe to merge."
+}

@@ -1,0 +1,56 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify lib/prd.sh already implements all acceptance criteria: prd_validate checks for valid JSON and non-empty userStories array; prd_next_story filters passes=false stories, sorts by priority ascending, and returns the first; prd_select_next reads from <root>/Input/prd.json; return code 2 signals all-done clean exit.",
+      "files": [
+        "lib/prd.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Verify lib/prd.sh is sourced in clippy.sh (or the appropriate entrypoint) so prd_select_next is available at runtime.",
+      "files": [
+        "clippy.sh",
+        "lib/loop.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Confirm prd_select_next is called in lib/loop.sh (loop_run_iteration or equivalent) and that a return code of 2 causes the loop to exit cleanly with an informational message (not an error).",
+      "files": [
+        "lib/loop.sh"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Run the existing tests/prd.bats suite to confirm all 11 tests pass without modification.",
+      "files": [
+        "tests/prd.bats"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "If any gap is found — e.g. loop does not handle exit code 2, or prd.sh is not sourced — make the minimal targeted fix.",
+      "files": [
+        "lib/loop.sh",
+        "clippy.sh"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "Run `bats tests/prd.bats` — all 11 existing tests must pass green.",
+    "Add a test in tests/prd.bats (if missing) that confirms prd_next_story returns valid JSON output parseable by jq when a story is selected.",
+    "Add an integration-style test in tests/loop.bats (or cli.bats) that confirms the loop exits with status 0 and prints a completion message when prd_select_next returns 2.",
+    "Verify shellcheck passes on lib/prd.sh with no errors (typecheck equivalent for bash)."
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Implementation already exists in lib/prd.sh — risk is that loop.sh does not correctly handle the return-code-2 all-done path, causing an error exit instead of a clean exit.",
+    "If prd.sh is not sourced in clippy.sh the functions will be unavailable at runtime despite tests passing."
+  ],
+  "steps_count": 5,
+  "testing_count": 4
+}

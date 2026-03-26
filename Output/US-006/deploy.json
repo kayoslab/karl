@@ -1,0 +1,1 @@
+{"decision":"pass","gates_checked":["tests","typecheck"],"failures":[],"notes":"All 14 branch.bats tests pass. shellcheck reports zero errors on lib/branch.sh and lib/loop.sh. branch_name implements deterministic feature/<id>-<slug> format with correct sanitization. branch_ensure handles creation, reuse, and failure cases. All acceptance criteria satisfied."}

@@ -1,0 +1,10 @@
+{
+  "tests_added": [
+    "tests/logging.bats",
+    "tests/cli.bats (--verbose section: 4 tests)"
+  ],
+  "tests_modified": [],
+  "test_results": "pass",
+  "failures": [],
+  "failure_source": null
+}

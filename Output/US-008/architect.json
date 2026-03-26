@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "ADR-003 already fully documents the agent prompt contract: four required frontmatter fields (role, inputs, outputs, constraints), the six required agent roles and their file paths, agents_validate_contract behaviour, and agents_get_contract_field grep-based extraction. US-008 is pure implementation verification — auditing real agent files and tests against the existing ADR-003 contract. No new architectural decisions are introduced. One caution from ADR-003 remains relevant: agent body text must not contain lines beginning with 'role:', 'inputs:', 'outputs:', or 'constraints:' to avoid false matches in the grep-based extractor — verify this holds for all six agent files after any edits."
+}

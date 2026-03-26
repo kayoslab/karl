@@ -1,0 +1,70 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Audit clippy.sh argument parsing: verify --dry-run, --max-retries, --workspace, --help all parse correctly and emit the expected [clippy] log lines already checked by tests/cli.bats",
+      "files": [
+        "clippy.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Add explicit WARNING log level for non-fatal issues in loop.sh and rework.sh. Merge conflict warning already uses '[clippy] WARNING:'; normalise all non-fatal advisory messages to use this prefix so operators can distinguish them from ERROR (stderr) and normal progress",
+      "files": [
+        "lib/loop.sh",
+        "lib/rework.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Confirm retry count logging in rework_loop is surfaced per-cycle as '[rework] Verification cycle N/MAX'. Already present in rework.sh; verify format matches what tests/rework.bats and tests/loop.bats expect",
+      "files": [
+        "lib/rework.sh",
+        "tests/rework.bats"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Ensure loop_run_iteration logs a clear final result line on both success ('[clippy] Iteration complete') and failure ('[clippy] ERROR: Iteration failed'). These already exist in loop.sh; verify no code path silently exits without a result line",
+      "files": [
+        "lib/loop.sh"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Run tests/cli.bats and tests/loop.bats to identify any currently failing tests. Fix gaps in clippy.sh or lib/loop.sh as needed until all assertions pass",
+      "files": [
+        "tests/cli.bats",
+        "tests/loop.bats",
+        "clippy.sh",
+        "lib/loop.sh"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Add any missing cli.bats tests for edge cases not yet covered: --max-retries with an invalid (non-numeric) value, --dry-run with a missing workspace, and the [clippy] prefix on the max-retries log line in dry-run output",
+      "files": [
+        "tests/cli.bats"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "tests/cli.bats: all existing tests must continue to pass — do not change test assertions, only fix the implementation",
+    "Add a test asserting --max-retries with a missing argument exits non-zero (already present) and with a non-numeric value (e.g. 'abc') exits non-zero",
+    "Add a test asserting every [clippy] WARNING: line goes to stdout (not stderr) so operators see it in the main log stream",
+    "Add a test asserting '[rework] Verification cycle N/MAX' appears in rework_loop output for both pass and fail cases",
+    "Add a test asserting loop_run_iteration emits a final result line containing either 'complete' or 'ERROR' on every code path",
+    "tests/loop.bats: verify the '--dry-run does not create LOCK file' behaviour is covered by an integration test (already exists in cli.bats); ensure no regressions in loop_run tests",
+    "Run full BATS suite after changes: bats tests/ — all 540+ tests must remain green"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Most acceptance criteria are already implemented; the main risk is test assertions in cli.bats relying on exact output strings that differ from current log messages — audit log lines carefully before changing them",
+    "Adding WARNING-level normalisation could break existing tests that grep for the old warning text format — update both implementation and tests atomically",
+    "bash 3.2 (macOS default) has no associative array; avoid any new data structures that depend on bash 4+ features"
+  ],
+  "steps_count": 6,
+  "testing_count": 7
+}

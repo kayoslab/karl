@@ -1,0 +1,51 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Diagnose the failing test: test #22 removes '${WORKSPACE_ROOT}/Agents/tech.md' but tech_discover checks '${CLIPPY_DIR}/Agents/tech.md' (the real repo dir), so the removal has no effect. The fix is to make agents_dir configurable or to fall through to the workspace-relative path.",
+      "files": [
+        "lib/tech.sh",
+        "tests/tech.bats"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Add an optional CLIPPY_AGENTS_DIR env override (defaulting to '${CLIPPY_DIR}/Agents') to tech_discover so tests can redirect the agents dir to the temporary workspace. Update tech_discover to use: agents_dir=\"${CLIPPY_AGENTS_DIR:-${CLIPPY_DIR}/Agents}\".",
+      "files": [
+        "lib/tech.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Update the test setup in tests/tech.bats to export CLIPPY_AGENTS_DIR=\"${AGENTS_DIR}\" (which already points to the tmp workspace Agents dir). This lets the existing stub removal in test #22 actually affect the directory the code checks.",
+      "files": [
+        "tests/tech.bats"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Run bats tests/tech.bats to confirm all 23 tests pass, including the previously failing test #22.",
+      "files": []
+    },
+    {
+      "step": 5,
+      "action": "Verify the full test suite (bats tests/) still passes with no regressions.",
+      "files": []
+    }
+  ],
+  "testing_recommendations": [
+    "Run bats tests/tech.bats in isolation first — all 23 tests must pass including test #22 'tech_discover skips gracefully when tech agent file is missing'",
+    "Run the full bats test suite (bats tests/) to check for regressions — particularly loop.bats and agents.bats which depend on adjacent modules",
+    "Verify test #15 'tech_discover skips when tech.md already has content' still passes — it must not be broken by the env var change",
+    "Confirm tech_discover still uses CLIPPY_DIR/Agents by default when CLIPPY_AGENTS_DIR is unset (default path must be preserved)"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Other tests may export or rely on CLIPPY_AGENTS_DIR already — check all .bats files for that variable name before adding",
+    "If tech_run_agent also hardcodes the agents_dir reference it may need the same override treatment — review carefully"
+  ],
+  "steps_count": 5,
+  "testing_count": 4
+}

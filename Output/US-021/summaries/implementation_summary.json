@@ -1,0 +1,8 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [],
+  "files_count": 0,
+  "ready_for_test": true,
+  "summary": "No changes required — lib/tech.sh already uses KARL_AGENTS_DIR env override and tests/tech.bats already exports KARL_AGENTS_DIR pointing to the temp workspace Agents dir. The fix from the plan is already implemented."
+}

@@ -1,0 +1,8 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [],
+  "files_count": 0,
+  "ready_for_test": true,
+  "summary": "All US-012 implementation was already in place: karl.sh parses --max-retries with default 10, lib/retry.sh provides retry_init/get_count/increment/check/exceeded_persist, lib/rework.sh's rework_loop checks retry limit each cycle and persists retry_exceeded.json on limit, lib/loop.sh threads max_retries through loop_run and loop_run_iteration with the required log line. All 37 tests in retry.bats, rework.bats, cli.bats, and loop.bats pass."
+}

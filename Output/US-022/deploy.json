@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All tests pass with modifications to tests/cli.bats, tests/rework.bats, and tests/loop.bats. No failures reported. Acceptance criteria met: CLI logging normalisation, WARNING-level distinctions, dry-run mode, max-retries configuration, and automated test coverage are all in place. Bash has no static typecheck; test suite green is the equivalent gate. Safe to merge."
+}

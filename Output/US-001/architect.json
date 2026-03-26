@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "ADR-001 fully covers the filesystem contract for this ticket. The plan's steps (WORKSPACE_DIRS, WORKSPACE_REQUIRED_INPUTS, WORKSPACE_OUTPUT_FILES constants; bootstrap_workspace; validate_workspace; workspace_init) are all consistent with ADR-001's decisions. No new architectural decisions are introduced. One note: the existing ADR-001 content still contains a draft paragraph about Output/tech.md that was pending a write approval — that prose should be cleaned up once tech.md is formally created, but it does not block this ticket."
+}

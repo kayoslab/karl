@@ -1,0 +1,68 @@
+[
+    {
+      "id": "US-031",
+      "title": "Implement a plugin system for custom agent roles and behaviors",
+      "description": "As an advanced user, I want karl to support a plugin system that allows me to define custom agent roles and behaviors through additional markdown files or configuration so that I can extend karl's capabilities without modifying core code.",
+      "acceptanceCriteria": [
+        "karl can load additional agent definitions from a specified plugins directory",
+        "Custom agents defined in the plugins directory can participate in the workflow with their own prompts and output contracts",
+        "The plugin system allows for dynamic registration of new agent roles without requiring changes to the core karl codebase",
+        "Documentation explains how to create and integrate custom agent plugins",
+        "Plugin behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "Adds extensibility for advanced users who want to customize the multi-agent workflow with new roles or behaviors."
+    },
+    {
+      "id": "US-028",
+      "title": "Implement an optional dashboard for real-time monitoring of karl's progress",
+      "description": "As a user, I want a web-based dashboard that shows karl's current status, active ticket, agent outputs, and iteration history in real-time so that I can monitor the loop's progress without relying solely on terminal output.",
+      "acceptanceCriteria": [
+        "karl includes a lightweight web server that serves a dashboard interface, which can be enabled with a CLI parameter (e.g., --dashboard)",
+        "The dashboard displays the current active ticket, current agent phase, branch name, retry count, and recent iteration results",
+        "The dashboard updates in real-time as karl progresses through iterations",
+        "The dashboard provides access to recent agent outputs and logs for deeper insight",
+        "The dashboard can be accessed through a local URL (e.g., http://localhost:3000) while karl is running",
+        "Dashboard behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "Provides an alternative interface for monitoring karl's activity and gaining insights into the multi-agent workflow beyond terminal logs."
+    },
+    {
+      "id": "US-029",
+      "title": "Support remote GIT repositories and CI/CD integration",
+      "description": "As a user, I want karl to support remote GIT repositories and CI/CD integration so that I can seamlessly incorporate it into my development workflow.",
+      "acceptanceCriteria": [
+        "karl can push changes back to remote repositories",
+        "karl integrates with popular CI/CD platforms (e.g., GitHub Actions, GitLab CI)",
+        "The integration allows for automated testing and deployment workflows",
+        "Documentation explains how to set up and use the GIT and CI/CD integration with karl",
+        "In remote mode karl does not automatically merge branches but instead creates pull requests for review",
+        "Integration behavior is covered by automated tests",
+        "Typecheck passes"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": "Increases flexibility for users who may prefer different data formats for their PRD."
+    },
+    {
+      "id": "US-025",
+      "title": "Prepare for homebrew distribution with installation script and package configuration",
+      "description": "As an open-source user, I want karl to include a homebrew installation script and package configuration so that I can easily install karl on macOS using homebrew.",
+      "acceptanceCriteria": [
+        "Repository includes a Homebrew formula for karl that defines the installation process",
+        "The Homebrew formula specifies dependencies such as Claude CLI and git",
+        "Create a karl init script that initializes the required folder structure and example files for a new karl workspace",
+        "Documentation in the README explains how to install karl using Homebrew on macOS",
+        "Homebrew installation is tested in an automated workflow to ensure it works correctly",
+        "Typecheck passes"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "Facilitates easy installation for macOS users through Homebrew. The init script should create the Agents, Input, Output, and Output/ADR folders with example files to help users get started quickly."
+    }
+]

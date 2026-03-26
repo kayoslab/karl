@@ -1,0 +1,10 @@
+{
+  "ticket_id": "US-011",
+  "feature_branch": "feature/US-011-implement-test-first-handoff-from-agent-d-to-agent-e",
+  "checks": {
+    "clean_tree": "pass",
+    "main_exists": "pass",
+    "no_conflicts": "pass"
+  },
+  "all_passed": true
+}

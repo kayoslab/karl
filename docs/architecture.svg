@@ -1,0 +1,255 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 920" width="900" height="920" font-family="monospace, sans-serif">
+  <!-- Background -->
+  <rect width="900" height="920" fill="#0d1117" rx="12"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" fill="#e6edf3" font-size="20" font-weight="bold">karl — Multi-Agent Development Loop</text>
+
+  <!-- ================================================================== -->
+  <!-- SINGLE-INSTANCE MODE (top half)                                     -->
+  <!-- ================================================================== -->
+  <text x="450" y="62" text-anchor="middle" fill="#8b949e" font-size="12">Single-Instance Mode (default)</text>
+
+  <!-- Loop border -->
+  <rect x="30" y="74" width="840" height="340" rx="10" fill="none" stroke="#30363d" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="50" y="93" fill="#8b949e" font-size="12">loop_run_iteration</text>
+
+  <!-- PRD box -->
+  <rect x="60" y="105" width="140" height="50" rx="8" fill="#1f6feb" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="130" y="125" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Input/</text>
+  <text x="130" y="143" text-anchor="middle" fill="#cdd9e5" font-size="11">prd.json + CLAUDE.md</text>
+
+  <!-- Arrow: PRD → Planner -->
+  <line x1="200" y1="130" x2="270" y2="130" stroke="#388bfd" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <!-- Planner -->
+  <rect x="270" y="105" width="120" height="50" rx="8" fill="#238636" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="330" y="125" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Planner</text>
+  <text x="330" y="143" text-anchor="middle" fill="#cdd9e5" font-size="11">plan + risks</text>
+
+  <!-- Arrow: Planner → Reviewer -->
+  <line x1="390" y1="130" x2="460" y2="130" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Reviewer -->
+  <rect x="460" y="105" width="120" height="50" rx="8" fill="#9e6a03" stroke="#d29922" stroke-width="1.5"/>
+  <text x="520" y="125" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Reviewer</text>
+  <text x="520" y="143" text-anchor="middle" fill="#cdd9e5" font-size="11">approved plan</text>
+
+  <!-- Arrow: Reviewer → Architect -->
+  <line x1="580" y1="130" x2="650" y2="130" stroke="#d29922" stroke-width="1.5" marker-end="url(#arrow-yellow)"/>
+
+  <!-- Architect -->
+  <rect x="650" y="105" width="130" height="50" rx="8" fill="#6e40c9" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="715" y="125" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Architect</text>
+  <text x="715" y="143" text-anchor="middle" fill="#cdd9e5" font-size="11">ADR + tech notes</text>
+
+  <!-- Arrow: Architect down to Tester -->
+  <line x1="715" y1="155" x2="715" y2="225" stroke="#a371f7" stroke-width="1.5" marker-end="url(#arrow-purple)"/>
+
+  <!-- Rework loop bounding box -->
+  <rect x="450" y="217" width="342" height="68" rx="6" fill="none" stroke="#8b949e" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>
+  <text x="621" y="213" text-anchor="middle" fill="#8b949e" font-size="9">rework_loop</text>
+
+  <!-- Tester -->
+  <rect x="650" y="225" width="130" height="50" rx="8" fill="#cf222e" stroke="#f85149" stroke-width="1.5"/>
+  <text x="715" y="245" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Tester</text>
+  <text x="715" y="263" text-anchor="middle" fill="#cdd9e5" font-size="11">generate + verify</text>
+
+  <!-- Arrow: Tester → Developer -->
+  <line x1="650" y1="250" x2="580" y2="250" stroke="#f85149" stroke-width="1.5" marker-end="url(#arrow-red)"/>
+
+  <!-- Developer -->
+  <rect x="460" y="225" width="120" height="50" rx="8" fill="#1f6feb" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="520" y="245" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Developer</text>
+  <text x="520" y="263" text-anchor="middle" fill="#cdd9e5" font-size="11">implementation</text>
+
+  <!-- Rework arc: impl fail -->
+  <path d="M 649 273 Q 615 310 581 273" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-gray)"/>
+  <text x="615" y="325" text-anchor="middle" fill="#8b949e" font-size="9">impl. fail → retry dev</text>
+
+  <!-- Rework arc: test self-fix -->
+  <path d="M 779 233 Q 822 251 779 269" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-gray)"/>
+  <text x="786" y="247" fill="#8b949e" font-size="9">test fail</text>
+  <text x="786" y="258" fill="#8b949e" font-size="9">→ self-fix</text>
+
+  <!-- Arrow: Developer → Deployment -->
+  <line x1="460" y1="250" x2="390" y2="250" stroke="#388bfd" stroke-width="1.5" marker-end="url(#arrow-blue2)"/>
+
+  <!-- Deployment -->
+  <rect x="270" y="225" width="120" height="50" rx="8" fill="#238636" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="330" y="245" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Deployment</text>
+  <text x="330" y="263" text-anchor="middle" fill="#cdd9e5" font-size="11">build + validate</text>
+
+  <!-- Arrow: Deployment → Merge -->
+  <line x1="270" y1="250" x2="200" y2="250" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arrow-green2)"/>
+
+  <!-- Merge box -->
+  <rect x="60" y="225" width="140" height="50" rx="8" fill="#1f6feb" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="130" y="245" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Merge → main</text>
+  <text x="130" y="263" text-anchor="middle" fill="#cdd9e5" font-size="11">git merge + tag</text>
+
+  <!-- Arrow: Merge → Output -->
+  <line x1="130" y1="275" x2="130" y2="335" stroke="#388bfd" stroke-width="1.5" marker-end="url(#arrow-blue3)"/>
+
+  <!-- Output box -->
+  <rect x="60" y="335" width="140" height="50" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="130" y="355" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">Output/</text>
+  <text x="130" y="373" text-anchor="middle" fill="#cdd9e5" font-size="11">progress.md + ADR</text>
+
+  <!-- Loop arrow from Output back to PRD -->
+  <path d="M 60 360 Q 30 360 30 130 Q 30 105 60 105" fill="none" stroke="#30363d" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-gray2)"/>
+  <text x="18" y="240" fill="#8b949e" font-size="10" transform="rotate(-90,18,240)">next ticket</text>
+
+  <!-- Utility boxes row -->
+  <rect x="280" y="385" width="120" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="340" y="408" text-anchor="middle" fill="#cdd9e5" font-size="11">Tech Agent</text>
+
+  <rect x="420" y="385" width="120" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="480" y="408" text-anchor="middle" fill="#cdd9e5" font-size="11">Branch</text>
+
+  <rect x="560" y="385" width="80" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="600" y="408" text-anchor="middle" fill="#cdd9e5" font-size="11">LOCK</text>
+
+  <rect x="660" y="385" width="120" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="720" y="408" text-anchor="middle" fill="#cdd9e5" font-size="11">Splitter (--split)</text>
+
+  <!-- ================================================================== -->
+  <!-- MULTI-INSTANCE MODE (bottom half)                                   -->
+  <!-- ================================================================== -->
+  <text x="450" y="456" text-anchor="middle" fill="#e6edf3" font-size="16" font-weight="bold">Multi-Instance Mode (--instances N)</text>
+
+  <!-- Supervisor border -->
+  <rect x="30" y="468" width="840" height="300" rx="10" fill="none" stroke="#da3633" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="50" y="488" fill="#da3633" font-size="12">supervisor_run</text>
+
+  <!-- Splitter (optional, before supervisor) -->
+  <rect x="60" y="500" width="130" height="50" rx="8" fill="#9e6a03" stroke="#d29922" stroke-width="1.5"/>
+  <text x="125" y="520" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="bold">Splitter</text>
+  <text x="125" y="538" text-anchor="middle" fill="#cdd9e5" font-size="10">split + depends_on</text>
+
+  <!-- Arrow: Splitter → PRD Claim -->
+  <line x1="190" y1="525" x2="240" y2="525" stroke="#d29922" stroke-width="1.5" marker-end="url(#arrow-yellow)"/>
+
+  <!-- PRD Claim -->
+  <rect x="240" y="500" width="130" height="50" rx="8" fill="#1f6feb" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="305" y="520" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="bold">PRD Claim</text>
+  <text x="305" y="538" text-anchor="middle" fill="#cdd9e5" font-size="10">mkdir atomic lock</text>
+
+  <!-- Workers area -->
+  <!-- Worker 1 -->
+  <rect x="420" y="495" width="180" height="42" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="510" y="512" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">Worker 1</text>
+  <text x="510" y="528" text-anchor="middle" fill="#8b949e" font-size="9">worktree → pipeline → merge</text>
+
+  <!-- Worker 2 -->
+  <rect x="420" y="545" width="180" height="42" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="510" y="562" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">Worker 2</text>
+  <text x="510" y="578" text-anchor="middle" fill="#8b949e" font-size="9">worktree → pipeline → merge</text>
+
+  <!-- Worker N -->
+  <rect x="420" y="595" width="180" height="42" rx="6" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="510" y="612" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">Worker N</text>
+  <text x="510" y="628" text-anchor="middle" fill="#8b949e" font-size="9">worktree → pipeline → merge</text>
+
+  <!-- Arrows: PRD Claim → Workers -->
+  <line x1="370" y1="516" x2="420" y2="516" stroke="#388bfd" stroke-width="1.2" marker-end="url(#arrow-blue)"/>
+  <line x1="370" y1="525" x2="400" y2="566" stroke="#388bfd" stroke-width="1.2" marker-end="url(#arrow-blue)"/>
+  <line x1="370" y1="535" x2="400" y2="616" stroke="#388bfd" stroke-width="1.2" marker-end="url(#arrow-blue)"/>
+
+  <!-- Merge Arbitrator -->
+  <rect x="660" y="500" width="150" height="50" rx="8" fill="#cf222e" stroke="#f85149" stroke-width="1.5"/>
+  <text x="735" y="520" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="bold">Merge Lock</text>
+  <text x="735" y="538" text-anchor="middle" fill="#cdd9e5" font-size="10">serialize to main</text>
+
+  <!-- Arrows: Workers → Merge Arbitrator -->
+  <line x1="600" y1="516" x2="660" y2="520" stroke="#f85149" stroke-width="1.2" marker-end="url(#arrow-red)"/>
+  <line x1="600" y1="566" x2="660" y2="530" stroke="#f85149" stroke-width="1.2" marker-end="url(#arrow-red)"/>
+  <line x1="600" y1="616" x2="660" y2="535" stroke="#f85149" stroke-width="1.2" marker-end="url(#arrow-red)"/>
+
+  <!-- Arrow: Merge Arbitrator → main -->
+  <rect x="660" y="570" width="150" height="40" rx="8" fill="#1f6feb" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="735" y="595" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="bold">main</text>
+
+  <line x1="735" y1="550" x2="735" y2="570" stroke="#388bfd" stroke-width="1.5" marker-end="url(#arrow-blue3)"/>
+
+  <!-- Coordinator -->
+  <rect x="60" y="580" width="150" height="50" rx="8" fill="#6e40c9" stroke="#a371f7" stroke-width="1.5"/>
+  <text x="135" y="600" text-anchor="middle" fill="#e6edf3" font-size="12" font-weight="bold">Coordinator</text>
+  <text x="135" y="618" text-anchor="middle" fill="#cdd9e5" font-size="10">overlap detection</text>
+
+  <!-- Dashed line: Coordinator watching Workers -->
+  <path d="M 210 605 Q 320 605 420 600" fill="none" stroke="#a371f7" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-purple)"/>
+  <text x="315" y="598" fill="#a371f7" font-size="9">periodic check</text>
+
+  <!-- Worktree boxes -->
+  <rect x="240" y="645" width="130" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="305" y="668" text-anchor="middle" fill="#cdd9e5" font-size="10">Git Worktrees</text>
+
+  <rect x="400" y="645" width="130" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="465" y="668" text-anchor="middle" fill="#cdd9e5" font-size="10">.prd.lockdir</text>
+
+  <rect x="560" y="645" width="130" height="36" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+  <text x="625" y="668" text-anchor="middle" fill="#cdd9e5" font-size="10">.merge.lockdir</text>
+
+  <!-- ================================================================== -->
+  <!-- LEGEND                                                              -->
+  <!-- ================================================================== -->
+  <rect x="30" y="780" width="840" height="128" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="50" y="802" fill="#8b949e" font-size="12" font-weight="bold">Legend</text>
+
+  <!-- Row 1: Color swatches -->
+  <rect x="50" y="813" width="14" height="14" rx="3" fill="#1f6feb"/>
+  <text x="70" y="824" fill="#cdd9e5" font-size="11">Input / Output / Merge</text>
+  <rect x="230" y="813" width="14" height="14" rx="3" fill="#238636"/>
+  <text x="250" y="824" fill="#cdd9e5" font-size="11">Planner / Deployment / Workers</text>
+  <rect x="470" y="813" width="14" height="14" rx="3" fill="#9e6a03"/>
+  <text x="490" y="824" fill="#cdd9e5" font-size="11">Reviewer / Splitter</text>
+  <rect x="660" y="813" width="14" height="14" rx="3" fill="#6e40c9"/>
+  <text x="680" y="824" fill="#cdd9e5" font-size="11">Architect / Coordinator</text>
+
+  <!-- Row 2 -->
+  <rect x="50" y="838" width="14" height="14" rx="3" fill="#cf222e"/>
+  <text x="70" y="849" fill="#cdd9e5" font-size="11">Tester / Merge Arbitrator</text>
+  <rect x="280" y="838" width="14" height="14" rx="3" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="300" y="849" fill="#cdd9e5" font-size="11">Infrastructure (Branch, LOCK, Worktrees)</text>
+
+  <!-- Row 3: Line styles -->
+  <line x1="50" y1="868" x2="80" y2="868" stroke="#8b949e" stroke-dasharray="5,3" stroke-width="1.5"/>
+  <text x="88" y="872" fill="#cdd9e5" font-size="11">rework loop (impl. fail → retry dev  |  test fail → self-fix)</text>
+  <line x1="50" y1="888" x2="80" y2="888" stroke="#30363d" stroke-dasharray="6,4" stroke-width="2"/>
+  <text x="88" y="892" fill="#cdd9e5" font-size="11">loop back to next ticket  |  supervisor boundary</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#388bfd"/>
+    </marker>
+    <marker id="arrow-blue2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#388bfd"/>
+    </marker>
+    <marker id="arrow-blue3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#388bfd"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3fb950"/>
+    </marker>
+    <marker id="arrow-green2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3fb950"/>
+    </marker>
+    <marker id="arrow-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d29922"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a371f7"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f85149"/>
+    </marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+    </marker>
+    <marker id="arrow-gray2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#30363d"/>
+    </marker>
+  </defs>
+</svg>

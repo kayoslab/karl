@@ -1,0 +1,68 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify confirmed-safe fact: Agents/tester.md has 'role: test' (not 'role: tester'). This is safe because agents_validate_contract (lib/agents.sh) greps for field *existence* only, not field value. No change is needed — document this as a known-safe invariant in the plan, not a risk.",
+      "files": [
+        "Agents/tester.md",
+        "lib/agents.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Fix tests/tester.bats setup(): the test agent stub is written to '${AGENTS_DIR}/test.md' but tester_run_agent calls agents_compose_prompt with role 'tester', which resolves to '${agents_dir}/tester.md'. Rename the created file from test.md to tester.md in setup() so the stub is found by agents_get_prompt.",
+      "files": [
+        "tests/tester.bats"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Confirm lib/tester.sh is correct end-to-end: tester_generate runs before developer_run in loop_run_iteration (lib/loop.sh line 83), developer_run reads the test context via tester_read_existing, and tests.json records tests_added and tests_modified. These are already implemented; read the files to confirm no gaps before proceeding.",
+      "files": [
+        "lib/tester.sh",
+        "lib/loop.sh"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Run the BATS test suite (bats tests/) to confirm tests/tester.bats passes after the stub filename fix from step 2.",
+      "files": [
+        "tests/tester.bats"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on clippy.sh and lib/*.sh to satisfy AC6 (Typecheck passes). Fix any warnings or errors shellcheck reports. Shellcheck is the typecheck equivalent for this bash project per project convention.",
+      "files": [
+        "clippy.sh",
+        "lib/tester.sh",
+        "lib/loop.sh",
+        "lib/agents.sh"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Re-run the full test suite (bats tests/) to confirm all tests pass and no regressions were introduced by shellcheck fixes.",
+      "files": []
+    }
+  ],
+  "testing_recommendations": [
+    "All existing tests/tester.bats tests should pass after renaming the stub from test.md to tester.md in setup(); no new test cases needed for the fix itself",
+    "Verify tester_run_agent tests pass: they create the tester stub via make_test_success_stub and then call tester_run_agent, which will now find tester.md",
+    "Verify tester_generate tests pass end-to-end (runs agent, persists tests.json, records tests_added and tests_modified counts)",
+    "Verify developer_run tests pass: developer_run reads the test context produced by tester_generate via tester_read_existing",
+    "Verify tests/loop.bats still passes — loop_run_iteration stubs tester_generate indirectly via the agent layer, so no changes expected there",
+    "Verify tests/agents.bats 'real test agent file passes contract validation' still passes (Agents/tester.md with role: test is confirmed safe)",
+    "Run shellcheck on clippy.sh and lib/*.sh with no warnings or errors; treat any shellcheck finding as a blocking failure per AC6"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The only substantive code change is renaming test.md to tester.md in the tester.bats setup() — a one-line fix. Risk of breaking other tests is minimal since no other test file references that stub.",
+    "Agents/tester.md has 'role: test' (not 'role: tester'). This is CONFIRMED SAFE: agents_validate_contract (lib/agents.sh:89) iterates over required field names (role, inputs, outputs, constraints) and greps for their existence using agents_get_contract_field, which matches 'role:' as a key regardless of value. No code or file change needed for this.",
+    "shellcheck may flag pre-existing issues in lib/*.sh unrelated to US-011; each finding must be assessed and fixed to satisfy AC6"
+  ],
+  "steps_count": 6,
+  "testing_count": 7
+}

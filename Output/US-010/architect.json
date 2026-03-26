@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "All changes in this plan are bug fixes and format corrections to an existing implementation — no new architectural patterns are introduced. (1) The Agents/architect.md format fix brings the file into compliance with the frontmatter contract already documented in ADR-003; it does not change that contract. (2) Changing agents_dir from ${workspace_root}/Agents to ${CLIPPY_DIR}/Agents in lib/architect.sh is a correctness fix: agent templates belong to the clippy installation, not the user workspace — ADR-001 governs the user workspace layout and is unaffected. (3) Adding || return 1 error propagation is a defensive coding fix with no architectural significance. ADR-001 already establishes Output/ADR/ as the home for ADRs, and ADR-003 already covers the agent registry contract. No ADR gap exists for the scope of this plan."
+}

@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "The plan extends agents_compose_prompt with three new placeholders ({{implementation}}, {{failures}}, {{mode}}) via context_json. This is an additive evolution of the contract documented in ADR-003 — not a new architectural decision. ADR-003 already owns the placeholder substitution mechanism and the agent registry; the rework loop is implementation behaviour within that contract. One consistency note: ADR-003 documents the agents_compose_prompt signature as positional args ending in <tests>; if context_json is being added as a new positional argument, ensure the function signature change is reflected in ADR-003's Decision section to keep the contract accurate. No new ADR is warranted."
+}

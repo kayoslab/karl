@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 7 unit tests in claude.bats pass. Both integration tests in cli.bats (exits non-zero, prints actionable error) pass. Implementation uses command -v (shellcheck-clean), validates before loop start, exits 1 on failure. All US-004 acceptance criteria met."
+}

@@ -1,0 +1,54 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Move commit_update_prd out of deploy_gate and into commit_finalize, called only after commit_merge_to_main succeeds. In lib/deploy.sh lines 130-136, remove the commit_update_prd call so deploy_gate only returns 0/1 based on decision. In lib/commit.sh commit_finalize, insert a commit_update_prd call between Step 2 (merge) and Step 3 (append progress), so passes=true is set only when the merge has actually landed on main.",
+      "files": [
+        "lib/deploy.sh",
+        "lib/commit.sh"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Update the comment on commit_finalize (line 168 of lib/commit.sh) to remove the stale note 'passes=true is set in deploy_gate before this is called' and replace it with a note that commit_update_prd is called here, after merge succeeds.",
+      "files": [
+        "lib/commit.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Verify all existing tests in tests/commit.bats and tests/deploy.bats still pass with the new sequencing. The deploy_gate stubs in tests/deploy.bats stub out commit_update_prd — check that no test relies on deploy_gate calling it. The commit_finalize tests (lines ~200-329 of tests/commit.bats) should verify PRD is updated as part of commit_finalize now.",
+      "files": [
+        "tests/commit.bats",
+        "tests/deploy.bats"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Add two new tests to tests/commit.bats targeting the sequencing guarantee introduced in Step 1: (a) simulate a merge failure inside commit_finalize and assert that Input/prd.json still has passes=false afterward; (b) simulate a merge failure and assert that Output/progress.md is NOT appended. These are the only net-new coverage gaps after the sequencing fix — all other behaviors (commit message format, branch cleanup, progress format) are already covered.",
+      "files": [
+        "tests/commit.bats"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Run bats tests/commit.bats and bats tests/deploy.bats to confirm all tests pass. Also run bash -n on lib/commit.sh and lib/deploy.sh to confirm typecheck passes.",
+      "files": []
+    }
+  ],
+  "testing_recommendations": [
+    "New test (commit_finalize): stub git to fail the merge step, call commit_finalize, assert prd.json still has passes=false for the ticket — verifies PRD is not updated before merge lands.",
+    "New test (commit_finalize): stub git to fail the merge step, call commit_finalize, assert Output/progress.md does not contain the ticket entry — verifies progress is not appended on merge failure.",
+    "Regression guard: run full tests/deploy.bats — deploy_gate must still return 0 on decision=pass and 1 on decision=fail without calling commit_update_prd itself.",
+    "Regression guard: run full tests/commit.bats — all 33 existing commit tests must continue to pass unchanged."
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "tests/deploy.bats stubs for commit_update_prd may need to be removed or adjusted since deploy_gate no longer calls it — check for unexpected stub interactions.",
+    "If any test in tests/commit.bats stubs commit_update_prd out of commit_finalize, those stubs now become load-bearing and must be kept in place for the new sequencing."
+  ],
+  "steps_count": 5,
+  "testing_count": 4
+}

@@ -1,0 +1,8 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [],
+  "files_count": 0,
+  "ready_for_test": true,
+  "summary": "All 46 tests in tests/agents.bats already pass. lib/agents.sh correctly implements agent registry loading with fenced/bare frontmatter parsing, contract validation for required fields (role, inputs, outputs, constraints), and prompt composition with multi-line context substitution. All six Agents/*.md files have proper --- fenced frontmatter with the required contract fields."
+}

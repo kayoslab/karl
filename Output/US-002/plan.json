@@ -1,0 +1,45 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Verify lib/lock.sh already implements all required functions: lock_acquire (with force override), lock_release, lock_exists, lock_path. Confirm it writes PID to LOCK file, prints ERROR with --force-lock hint on conflict, and prints WARNING on forced override.",
+      "files": ["lib/lock.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Verify clippy.sh already sources lib/lock.sh, parses --force-lock flag into FORCE_LOCK variable, calls lock_acquire before starting the loop (exiting with code 1 on failure), and installs a trap to call lock_release on EXIT.",
+      "files": ["clippy.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Verify tests/lock.bats covers all acceptance criteria: LOCK created on acquire, PID written, failure when LOCK exists, ERROR message printed, --force-lock hint in output, force override succeeds with WARNING, release removes file, release is idempotent, lock_exists return codes, lock_path output.",
+      "files": ["tests/lock.bats"]
+    },
+    {
+      "step": 4,
+      "action": "Run the full test suite (bats tests/lock.bats) and confirm all tests pass. If any fail, fix the discrepancy in lib/lock.sh or tests/lock.bats.",
+      "files": ["lib/lock.sh", "tests/lock.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on lib/lock.sh and clippy.sh to confirm typecheck passes.",
+      "files": ["lib/lock.sh", "clippy.sh"]
+    }
+  ],
+  "testing_recommendations": [
+    "Run: bats tests/lock.bats — all 12 existing tests must pass",
+    "Ensure lock_acquire creates LOCK with PID content",
+    "Ensure lock_acquire returns non-zero and prints ERROR + --force-lock hint when LOCK exists and force=false",
+    "Ensure lock_acquire with force=true removes old LOCK, creates new one, and prints WARNING",
+    "Ensure lock_release removes LOCK and returns 0 when LOCK absent (idempotent)",
+    "Ensure lock_exists returns 0/1 correctly",
+    "Ensure lock_path returns <workspace>/LOCK",
+    "Integration: confirm clippy.sh main() calls lock_acquire before loop_run and trap releases on exit",
+    "Run shellcheck on lib/lock.sh and clippy.sh with no errors"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Implementation appears already complete — main risk is that a test or shellcheck check is failing, causing the ticket to be marked passes:false. Run tests to confirm current status before making any changes.",
+    "Trap-based lock_release may not fire on SIGKILL; this is an accepted limitation of file-based locking and does not need to be fixed for this ticket."
+  ]
+}

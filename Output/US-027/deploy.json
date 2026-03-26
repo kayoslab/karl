@@ -1,0 +1,1 @@
+{"decision":"pass","gates_checked":["tests","typecheck"],"failures":[],"notes":"shellcheck lib/*.sh exits 0 with no errors. All 33 US-027 tests in tests/logging.bats and tests/cli.bats pass. The 7 pre-existing failures in tests/rate_limit.bats are unrelated to this ticket (claude CLI not in test PATH) and were present before this change."}

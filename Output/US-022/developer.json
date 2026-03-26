@@ -1,0 +1,1 @@
+{"files_changed": [], "summary": "US-022 implementation was already complete: karl.sh has --dry-run and --max-retries (with numeric validation), lib/loop.sh emits final result lines on all code paths, lib/rework.sh logs verification cycle N/MAX per cycle. All 49 tests in cli.bats, loop.bats, and rework.bats pass.", "ready_for_test": true}

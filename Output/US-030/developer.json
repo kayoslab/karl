@@ -1,0 +1,10 @@
+{
+  "files_changed": [
+    "lib/lock.sh",
+    "lib/loop.sh",
+    "lib/clean.sh",
+    "karl.sh",
+    "tests/lock.bats"
+  ],
+  "summary": "Implemented multi-instance support for karl (US-030). lib/lock.sh: made lock_path() instance-aware (returns LOCK.N when INSTANCE_ID>1), changed lock_acquire() to write structured PID/INSTANCE/TICKET format, added lock_update_ticket(), lock_claimed_tickets(), lock_dashboard(), and made lock_release() instance-aware. lib/loop.sh: added loop_ticket_available() to detect tickets claimed by sibling instances, rewrote loop_run_iteration() to iterate all incomplete stories in priority order and skip claimed ones (returning 2 when all unclaimed slots are exhausted). lib/clean.sh: updated clean_remove_lock() to glob-remove LOCK* files. karl.sh: added --instances <n> and --status CLI flags, updated usage() with multi-instance documentation. tests/lock.bats: updated the legacy 'lock_acquire writes PID to LOCK file' test to check the new structured PID= format. All 90 tests in lock/loop/cli suites pass; shellcheck passes clean."
+}

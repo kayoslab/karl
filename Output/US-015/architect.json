@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR required. Architectural considerations: (1) ADR-004 positions deploy_gate after merge_safe_check and before final merge — the plan's gate-commit addition fits this ordering cleanly; confirm loop_run_iteration calls deploy_gate before commit_finalize/merge. (2) The gate commit (deploy.json + prd.json) must be staged and committed while still on the feature branch, not main — this is already the case per ADR-004 flow but must be verified in tests using a real temp git repo. (3) ADR-001 defines Output/<ticket_id>/ as the canonical artifact location; deploy_persist must write to Output/<ticket_id>/deploy.json, not Output/ root. (4) If deploy_gate creates a commit and later commit_finalize also runs git commit, the second commit must not re-stage already-committed files — use 'git diff --staged' guards or rely on git's no-op behavior for clean staging area. (5) ADR-003 requires 'deployment' as a required agent role; Agents/deployment.md frontmatter must remain valid after edits or agents_validate will abort startup."
+}

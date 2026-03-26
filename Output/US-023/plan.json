@@ -1,0 +1,41 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Audit existing clean.sh and cli.bats: verify clean_run, clean_checkout_main, clean_discard_changes, clean_delete_branch, clean_remove_lock are all implemented and unit-tested",
+      "files": ["lib/clean.sh", "tests/clean.bats"]
+    },
+    {
+      "step": 2,
+      "action": "Add CLI integration tests to tests/cli.bats covering: --clean exits 0, --clean checks out main, --clean removes LOCK file, --clean --force discards uncommitted changes, --clean on non-git dir exits 1",
+      "files": ["tests/cli.bats"]
+    },
+    {
+      "step": 3,
+      "action": "Run shellcheck (typecheck) across clippy.sh and all lib/*.sh files to ensure no typecheck errors are introduced; fix any findings",
+      "files": ["clippy.sh", "lib/clean.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Run full test suite (bats tests/) to confirm all existing tests still pass and new CLI tests pass",
+      "files": ["tests/"]
+    },
+    {
+      "step": 5,
+      "action": "Mark US-023 passes=true in the PRD file",
+      "files": ["scripts/ralph/prd.json", "example/Input/prd.json"]
+    }
+  ],
+  "testing_recommendations": [
+    "Add --clean integration tests to tests/cli.bats: --clean exits 0 on clean repo, --clean checks out main branch, --clean removes LOCK file, --clean on non-git workspace exits 1 with ERROR message",
+    "Add --force integration test to tests/cli.bats: --clean --force discards uncommitted changes and still exits 0",
+    "Verify warning message is printed when --clean is used without --force on a dirty tree",
+    "Ensure clean.bats unit tests all still pass (26 tests currently passing)",
+    "Run shellcheck on clippy.sh and lib/clean.sh to validate typecheck"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "cli.bats setup creates a valid workspace; --clean tests must NOT call workspace_init (clean runs before it) — use a minimal git-only setup for --clean test cases to avoid workspace validation failures",
+    "The --clean path in clippy.sh calls git_is_repo before clean_run; cli.bats tests for --clean must set up a git repo or they will exit 1 with a different error than expected"
+  ]
+}

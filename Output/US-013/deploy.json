@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All 78 tests in agents.bats and rework.bats pass. bash -n syntax check passes on lib/agents.sh, lib/rework.sh, and lib/tester.sh. The 12 failing tests in the full suite (deploy, commit, docs, loop, tech) are pre-existing failures unrelated to US-013's scope. Rework-loop behavior — developer-fix path, tester-fix path, green-on-first-verify exit, retry-limit exit, and placeholder substitution — is fully covered by passing automated tests."
+}

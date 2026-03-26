@@ -1,0 +1,85 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "title": "Add --instances CLI parameter to karl.sh",
+      "description": "Parse a new --instances <number> flag (default: 1). When >1, enable multi-instance mode. Store INSTANCE_COUNT and derive INSTANCE_ID (1..N) for the current process. Pass instance_id through to all downstream functions.",
+      "files": ["karl.sh"],
+      "detail": "Add to argument parsing loop: `--instances) INSTANCE_COUNT=$2; shift;;`. Default INSTANCE_COUNT=1. When INSTANCE_COUNT>1, assign INSTANCE_ID as the next available slot (scan for available LOCK files). Export INSTANCE_ID for use in lib modules."
+    },
+    {
+      "step": 2,
+      "title": "Make lock.sh instance-aware",
+      "description": "Modify lock_path() to return `${workspace_root}/LOCK` when INSTANCE_ID is unset/1, and `${workspace_root}/LOCK.${INSTANCE_ID}` when multi-instance mode is active. Update lock_acquire() to scan existing locks and detect ticket collisions.",
+      "files": ["lib/lock.sh"],
+      "detail": "lock_path(): `echo \"${workspace_root}/LOCK${INSTANCE_ID:+.${INSTANCE_ID}}\". Add lock_next_available_id() that scans LOCK.* files and returns lowest unused integer. Add lock_claimed_tickets() that reads all active LOCK files to get their current ticket, used for collision detection."
+    },
+    {
+      "step": 3,
+      "title": "Make branch.sh instance-aware for collision avoidance",
+      "description": "Before creating a branch, check all active LOCK files to see if any other instance is already working on the same ticket. If collision detected, skip to next available ticket.",
+      "files": ["lib/branch.sh", "lib/lock.sh"],
+      "detail": "Add branch_in_use() that checks active LOCK files. In loop.sh, after prd_select_next(), call branch_in_use() and skip the ticket if already claimed. Write current ticket_id into the LOCK file content (alongside PID) so other instances can read it."
+    },
+    {
+      "step": 4,
+      "title": "Update LOCK file format to include ticket and instance metadata",
+      "description": "Change LOCK file content from just PID to a structured format: `PID=<pid>\\nINSTANCE=<id>\\nTICKET=<ticket_id>`. Update lock_acquire() to write this format and add a lock_read_ticket() helper.",
+      "files": ["lib/lock.sh"],
+      "detail": "lock_acquire() writes: `printf 'PID=%s\\nINSTANCE=%s\\nTICKET=%s\\n' \"$$\" \"${INSTANCE_ID:-1}\" \"${current_ticket:-}\"`. Add lock_update_ticket() called from loop.sh when a ticket is selected so other instances see the claimed ticket immediately."
+    },
+    {
+      "step": 5,
+      "title": "Update loop.sh to claim tickets and skip collisions",
+      "description": "After selecting the next ticket with prd_select_next(), check if any sibling instance has claimed it. If so, pick the next eligible ticket. Update LOCK file with claimed ticket before starting work.",
+      "files": ["lib/loop.sh", "lib/lock.sh"],
+      "detail": "In loop_run_ticket(): call lock_update_ticket(workspace_root, ticket_id) after selection. Add loop_ticket_available() that reads all LOCK.* files and returns 1 if ticket is claimed by another instance. Iterate through sorted tickets to find first unclaimed one."
+    },
+    {
+      "step": 6,
+      "title": "Keep Output/ artifacts per-ticket (already isolated, no change needed)",
+      "description": "Output/{ticket_id}/ is already per-ticket, so no structural change is needed. Verify that progress.md appends are safe under concurrent writes by using a lockfile-guarded append.",
+      "files": ["lib/artifacts.sh"],
+      "detail": "Add a brief flock-based guard around progress.md appends if flock is available, with fallback to direct append. Since each instance writes to different ticket dirs, artifact isolation is already correct."
+    },
+    {
+      "step": 7,
+      "title": "Add status dashboard output for multi-instance mode",
+      "description": "When --instances >1, add a dashboard function that reads all LOCK.* files and prints a summary table of active instances: instance ID, PID, current ticket, elapsed time.",
+      "files": ["lib/lock.sh", "karl.sh"],
+      "detail": "Add lock_dashboard() function: iterate LOCK.* glob, parse PID/INSTANCE/TICKET from each, check if PID is alive, print formatted table. Call from karl.sh when --instances flag is present and user passes --status, or print at startup."
+    },
+    {
+      "step": 8,
+      "title": "Write tests for multi-instance behavior",
+      "description": "Add tests covering: instance lock path naming, ticket collision detection, LOCK file format parsing, dashboard output, and that two simulated instances do not claim the same ticket.",
+      "files": ["tests/lock.bats", "tests/loop.bats"],
+      "detail": "In lock.bats: test lock_path with INSTANCE_ID set; test lock_acquire writes PID/INSTANCE/TICKET; test lock_claimed_tickets reads sibling locks. In loop.bats: simulate two instances with pre-created LOCK files and verify second instance skips claimed ticket."
+    },
+    {
+      "step": 9,
+      "title": "Add documentation section for multi-instance usage",
+      "description": "Update README or add a short usage note in karl.sh help text explaining --instances flag, how instances are numbered, and how to monitor them.",
+      "files": ["karl.sh"],
+      "detail": "Extend the --help output block with a 'Multi-instance mode' section. Single-paragraph explanation: default off, enable with --instances N, each gets LOCK.N file, dashboard via --status, instances avoid same ticket automatically."
+    }
+  ],
+  "testing_recommendations": [
+    "Test lock_path() returns LOCK (no suffix) when INSTANCE_ID=1 or unset, and LOCK.2 when INSTANCE_ID=2",
+    "Test lock_acquire() writes structured PID/INSTANCE/TICKET content",
+    "Test lock_update_ticket() modifies TICKET field without corrupting PID/INSTANCE fields",
+    "Test lock_claimed_tickets() aggregates tickets from all LOCK.* files in workspace",
+    "Test loop skips a ticket when a sibling LOCK file claims it, and picks the next available",
+    "Test that --instances 1 (default) behaves identically to current single-instance behavior — no regression",
+    "Test dashboard output lists all active instances when multiple LOCK.* files exist",
+    "Test stale LOCK.* files (dead PID) are ignored in collision detection"
+  ],
+  "estimated_complexity": "medium",
+  "risks": [
+    "Race condition between ticket selection and LOCK update: two instances could select the same ticket in the window between prd_select_next() and lock_update_ticket(). Mitigation: use atomic file creation (set -C / noclobber) for a per-ticket claim file under Output/{ticket_id}/.claimed.",
+    "progress.md concurrent appends: two instances finishing simultaneously could interleave lines. Mitigation: use flock if available; on macOS flock may require coreutils — document the fallback.",
+    "prd.json concurrent writes: both instances could write prd.json to mark a ticket done. Mitigation: use a dedicated prd.lock file with noclobber, release after write. Already a concern in single-instance mode but amplified here.",
+    "LOCK.* glob on cleanup: --clean must remove LOCK.* not just LOCK. Update clean.sh to glob LOCK* pattern.",
+    "Branch checkout conflicts: if two instances attempt to checkout overlapping branches (e.g. both on main briefly), git may error. The existing branch_ensure() checkout is safe but should check for detached HEAD state."
+  ]
+}

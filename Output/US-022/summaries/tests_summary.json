@@ -1,0 +1,15 @@
+{
+  "summary_type": "tests",
+  "source_file": "tests.json",
+  "test_results": "pass",
+  "tests_added": [],
+  "tests_modified": [
+    "tests/cli.bats",
+    "tests/rework.bats",
+    "tests/loop.bats"
+  ],
+  "failures": [],
+  "failures_count": 0,
+  "added_count": 0,
+  "modified_count": 3
+}

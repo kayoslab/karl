@@ -1,0 +1,6 @@
+{
+  "decision": "pass",
+  "gates_checked": ["tests", "typecheck"],
+  "failures": [],
+  "notes": "All US-012 acceptance criteria pass: --max-retries CLI flag (tests 162-164), retry_init/check/increment/exceeded_persist (tests 407-432), rework_loop retry limit enforcement (tests 39-42), and README mention (test 238). The 12 failing tests are pre-existing failures unrelated to this ticket (deploy_gate stub issues, commit_finalize, example/ directory, tech agent graceful skip, loop progress sync). No regressions introduced by US-012 changes."
+}

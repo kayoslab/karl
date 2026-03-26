@@ -1,0 +1,49 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Read lib/git.sh and tests/git.bats to understand what is already implemented and what is missing relative to the acceptance criteria.",
+      "files": ["lib/git.sh", "tests/git.bats"]
+    },
+    {
+      "step": 2,
+      "action": "Read clippy.sh and lib/loop.sh to identify where workspace/git checks occur in the startup sequence, ensuring the git repo check is placed before any branch creation or ticket execution.",
+      "files": ["clippy.sh", "lib/loop.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Implement any missing acceptance criteria in lib/git.sh: (a) git_repo_check — detect if CWD is a git repo; (b) git_init_repo — initialize a new repo with a default main branch on confirmation or auto-init flag; (c) ensure initialization failure exits with a clear error message; (d) wire the check into the startup sequence before branch creation.",
+      "files": ["lib/git.sh", "clippy.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Add the missing failure-case test for git_init_repo to tests/git.bats (e.g., git init fails and execution stops with error), and verify all 11 existing tests still pass.",
+      "files": ["tests/git.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on lib/git.sh and confirm it exits 0. Fix any warnings or errors reported.",
+      "files": ["lib/git.sh"]
+    },
+    {
+      "step": 6,
+      "action": "Run the full test suite (bats tests/) and confirm all tests pass with no regressions.",
+      "files": ["tests/"]
+    }
+  ],
+  "testing_recommendations": [
+    "Test git_repo_check returns success when CWD contains a .git directory.",
+    "Test git_repo_check returns failure and prints a clear warning when CWD has no .git directory.",
+    "Test git_init_repo initializes a repo and creates a default main branch when auto-init is enabled.",
+    "Test git_init_repo initializes a repo when operator confirmation is provided via stdin.",
+    "Test git_init_repo stops execution with a clear error message when git init fails (e.g., stub git to exit non-zero).",
+    "Test that the startup sequence invokes git_repo_check before any branch creation function.",
+    "Confirm shellcheck on lib/git.sh exits 0 as part of CI or manually in the test run."
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "The default branch name (main vs master) may conflict with the user's git config — ensure the init step explicitly sets the branch name to 'main'.",
+    "Auto-init flag name must be consistent with any existing flag conventions in clippy.sh.",
+    "Wiring the check into the startup sequence must not break existing workspace_init ordering assumptions."
+  ]
+}

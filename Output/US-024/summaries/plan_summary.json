@@ -1,0 +1,79 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Create architecture diagram as SVG showing the clippy multi-agent loop (loop_run_iteration → planner → reviewer → architect → tester → developer → deployment → merge/deploy cycle)",
+      "files": [
+        "docs/architecture.svg"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Write comprehensive README.md covering: purpose, prerequisites (Claude CLI, git, bats), installation, folder structure (Agents/, Input/, Output/, Output/ADR/), multi-agent workflow description, CLI commands (run, --clean, --force, --retry), configuration parameters, and embed the architecture diagram",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Create example workspace directory with sample Agents/ markdown files mirroring the real ones but with placeholder content showing expected format",
+      "files": [
+        "example/Agents/planning.md",
+        "example/Agents/developer.md",
+        "example/Agents/architect.md",
+        "example/Agents/tester.md",
+        "example/Agents/reviewing.md",
+        "example/Agents/deployment.md",
+        "example/Agents/tech.md"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Create example Input/prd.json with at least one simple feature ticket demonstrating the ticket schema (id, title, description, acceptanceCriteria, priority, passes, notes)",
+      "files": [
+        "example/Input/prd.json"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Create example CLAUDE.md with placeholder project context showing the expected format for clippy workspace configuration",
+      "files": [
+        "example/CLAUDE.md"
+      ]
+    },
+    {
+      "step": 6,
+      "action": "Create example Output directory structure with README explaining expected artifacts (ADR/, summaries, tech.md)",
+      "files": [
+        "example/Output/.gitkeep",
+        "example/Output/ADR/.gitkeep"
+      ]
+    },
+    {
+      "step": 7,
+      "action": "Add documentation validation test in tests/docs.bats: verify README.md exists and is non-empty, contains required sections (Installation, Usage, Architecture, Agents), example workspace files exist and are valid JSON where applicable",
+      "files": [
+        "tests/docs.bats"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "tests/docs.bats: assert README.md exists and size > 0",
+    "tests/docs.bats: assert README.md contains headings for Installation, Usage, Architecture, Agents, Configuration",
+    "tests/docs.bats: assert docs/architecture.svg exists and contains valid SVG markup (starts with <svg)",
+    "tests/docs.bats: assert example/Input/prd.json is valid JSON with at least one ticket entry",
+    "tests/docs.bats: assert example/Agents/ contains all 7 required agent markdown files",
+    "tests/docs.bats: assert example/CLAUDE.md exists and is non-empty",
+    "Verify README renders correctly by checking no broken markdown link patterns"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "SVG diagram must be self-contained and render on GitHub without external dependencies",
+    "Example agent files must stay in sync if real Agents/ format changes — keep them clearly marked as examples",
+    "docs.bats validation should be lightweight (file existence + basic content checks) to avoid brittle tests"
+  ],
+  "steps_count": 7,
+  "testing_count": 7
+}

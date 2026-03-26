@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "The sequencing fix is consistent with ADR-004, which explicitly states that merge failure must leave passes=false on the ticket. Moving commit_update_prd from deploy_gate into commit_finalize (after merge succeeds) is the correct implementation of that contract — the current code violates ADR-004 by setting passes=true before the merge lands. No new ADR is needed; this is a bug fix bringing the implementation into alignment with existing decisions. One architectural note: deploy_gate's responsibility should remain a pure decision gate (0/1) with no side effects on durable state (prd.json). The plan enforces this correctly. Ensure commit_finalize's internal ordering is: (1) create commit, (2) merge to main, (3) commit_update_prd, (4) append progress — so that any failure at step 2 leaves both prd.json and progress.md untouched."
+}

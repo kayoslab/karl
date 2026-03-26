@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR needed. The fix — adding CLIPPY_AGENTS_DIR env override to tech_discover — is a narrow testability improvement that follows the established pattern from ADR-005 (CLIPPY_RATE_LIMIT_BACKOFF_BASE, CLIPPY_RATE_LIMIT_MAX_RETRIES). ADR-001 already covers Output/tech.md as a canonical output; ADR-003 already classifies tech as an optional agent outside the six required roles. No conflicts with existing ADRs. Ensure the default path (CLIPPY_DIR/Agents) is preserved when CLIPPY_AGENTS_DIR is unset, and check all .bats files for any existing use of CLIPPY_AGENTS_DIR before introducing it."
+}

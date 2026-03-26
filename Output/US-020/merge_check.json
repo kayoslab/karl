@@ -1,0 +1,10 @@
+{
+  "ticket_id": "US-020",
+  "feature_branch": "feature/US-020-handle-claude-rate-limit-responses-by-waiting-and-resuming",
+  "checks": {
+    "clean_tree": "pass",
+    "main_exists": "pass",
+    "no_conflicts": "pass"
+  },
+  "all_passed": true
+}

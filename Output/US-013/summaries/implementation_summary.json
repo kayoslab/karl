@@ -1,0 +1,14 @@
+{
+  "summary_type": "implementation",
+  "source_file": "developer.json",
+  "files_changed": [
+    "lib/agents.sh",
+    "Agents/tester.md",
+    "Agents/developer.md",
+    "tests/agents.bats",
+    "tests/rework.bats"
+  ],
+  "files_count": 5,
+  "ready_for_test": true,
+  "summary": "Extended agents_compose_prompt with implementation, failures, and mode context variables and substitutions. Updated Agents/tester.md and Agents/developer.md with proper frontmatter and placeholders. Added tests in agents.bats for the three new substitutions and coverage in rework.bats for all rework loop paths."
+}

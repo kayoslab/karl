@@ -1,0 +1,55 @@
+{
+  "summary_type": "plan",
+  "source_file": "plan.json",
+  "plan": [
+    {
+      "step": 1,
+      "action": "Finalize Agents/architect.md to use the consistent headerless format matching planner.md, reviewer.md, and tester.md (no YAML --- fences; contract fields as bare key: value lines at the top, followed by prompt body). The staged diff already does this — confirm the working-tree copy matches the staged version and resolve any residual unstaged changes.",
+      "files": [
+        "Agents/architect.md"
+      ]
+    },
+    {
+      "step": 2,
+      "action": "Finalize lib/architect.sh with two targeted fixes already staged: (a) architect_run uses local agents_dir=\"${CLIPPY_DIR}/Agents\" instead of ${workspace_root}/Agents so it reads from the clippy installation, not the user workspace; (b) agents_compose_prompt call in architect_run_agent has || return 1 error propagation. Confirm working-tree copy matches staged version.",
+      "files": [
+        "lib/architect.sh"
+      ]
+    },
+    {
+      "step": 3,
+      "action": "Run tests/architect.bats and confirm all 41 tests pass. The test setup already creates stubs in STUB_DIR and sets CLIPPY_DIR to the repo root, so architect_run will resolve Agents/architect.md from the real repo — ensure the updated file satisfies agents_validate_contract via grep-based field detection.",
+      "files": [
+        "tests/architect.bats"
+      ]
+    },
+    {
+      "step": 4,
+      "action": "Run tests/agents.bats and confirm the four real-file contract validation tests pass (planner, reviewer, architect, tester, developer, deployment) — particularly 'real architect agent file passes contract validation' which tests the updated Agents/architect.md directly.",
+      "files": [
+        "tests/agents.bats"
+      ]
+    },
+    {
+      "step": 5,
+      "action": "Run shellcheck on lib/architect.sh to confirm typecheck passes. Address any SC warnings (unbound variables, quoting, etc.).",
+      "files": [
+        "lib/architect.sh"
+      ]
+    }
+  ],
+  "testing_recommendations": [
+    "Run bats tests/architect.bats — all 41 tests must pass, including: architect_read_adrs (5 tests), architect_read_tech (2 tests), architect_run_agent (3 tests), architect_persist_adr (5 tests), architect_run happy-path ADR required (4 tests), architect_run happy-path no ADR (3 tests), architect_run error conditions (4 tests), architect_run traceability (3 tests)",
+    "Run bats tests/agents.bats — specifically verify 'real architect agent file passes contract validation' passes after the Agents/architect.md format change",
+    "Run shellcheck lib/architect.sh — must exit 0 with no errors",
+    "Verify architect_run does not create an ADR file when adr_required is false (acceptance criterion: no spurious ADR creation)",
+    "Verify Output/<ticket_id>/architect.json is written and contains adr_required field (acceptance criterion: traceability to active ticket)"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Agents/architect.md has both staged and unstaged changes (MM git status) — the unstaged working-tree version may diverge from the intended final state; the developer must reconcile these before testing",
+    "Changing agents_dir from ${workspace_root}/Agents to ${CLIPPY_DIR}/Agents in architect_run means tests that previously relied on injecting a custom architect.md via WORKSPACE_ROOT/Agents will now use the real Agents/architect.md — test stubs for claude binary still work, but the agent template substitution now uses the real file"
+  ],
+  "steps_count": 5,
+  "testing_count": 5
+}

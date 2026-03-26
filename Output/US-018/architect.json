@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No architectural conflicts with existing ADRs. All changes are additive extensions to lib/summarize.sh following established patterns. Key notes: (1) review.json persisted to Output/<ticket_id>/review.json is consistent with ADR-001's Output/ contract — no amendment needed since the per-ticket subdirectory pattern is already established. (2) summarize_architect and summarize_review must follow the same shape as summarize_plan (summary_type, source_file, key fields) to keep summarize_artifact's dispatch contract uniform. (3) The plan correctly identifies the risk of duplicate function definitions — developer must grep lib/summarize.sh for existing summarize_review before adding. (4) summarize_ticket_artifacts counter must be incremented for both new artifact types or the 'no summarizable artifacts' guard will incorrectly fire. (5) review.json should only be written on 'approve' path in planning_run_loop, not on 'revise' iterations — confirm placement is after the approve branch check, not at function exit."
+}

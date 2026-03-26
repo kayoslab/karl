@@ -1,0 +1,9 @@
+{
+  "approved": true,
+  "concerns": [
+    "Step 4 references lib/agents.sh which does not appear to exist in this repo (git status shows no such file). Step 5 also references lib/rework.sh which is similarly absent. The developer should audit actual lib/*.sh files before implementing these steps and skip or adjust for any missing files.",
+    "The plan does not explicitly address lib/artifacts.sh, lib/rate_limit.sh, lib/tech.sh, lib/developer.sh, or lib/karl.sh — these should be audited in step 5 alongside the listed files to ensure no verbose-worthy echoes are missed.",
+    "shellcheck risk is real: KARL_VERBOSE and KARL_TICKET_ID must be exported from logging.sh (or declared with export in karl.sh before sourcing other libs) to avoid SC2154 errors across all sourcing files."
+  ],
+  "revised_plan": null
+}

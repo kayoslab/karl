@@ -1,0 +1,10 @@
+{
+  "ticket_id": "US-018",
+  "feature_branch": "feature/US-018-apply-artifact-summarization-policy-for-fresh-agent-iterations",
+  "checks": {
+    "clean_tree": "pass",
+    "main_exists": "pass",
+    "no_conflicts": "pass"
+  },
+  "all_passed": true
+}

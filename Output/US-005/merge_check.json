@@ -1,0 +1,10 @@
+{
+  "ticket_id": "US-005",
+  "feature_branch": "feature/US-005-read-ralph-style-prdjson-and-select-highest-priority-unfinished-ticket",
+  "checks": {
+    "clean_tree": "pass",
+    "main_exists": "pass",
+    "no_conflicts": "pass"
+  },
+  "all_passed": true
+}

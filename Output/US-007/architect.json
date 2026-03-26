@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "ADR-003 already fully specifies the agent registry contract for this ticket. No new ADR needed. Key architectural notes for the developer: (1) The role name mismatches identified in the plan risks are a real concern — ADR-003 states roles are matched case-insensitively, but the *file* is the authoritative source for the role name. If agents_validate checks for required roles by filename (planner.md → 'planner') rather than by the 'role:' field value, then 'role: test' in tester.md and 'role: reviewing' in reviewer.md are irrelevant to validation — fix the agent files to match ADR-003 (role: tester, role: reviewer) so downstream code that reads the role field gets the correct value. (2) ADR-003 explicitly warns that agent body text must not contain lines beginning with 'role:', 'inputs:', 'outputs:', or 'constraints:' — the grep-anywhere approach is documented as intentional and constrained by this rule. The real agent files must conform to this constraint. (3) ADR-003 specifies bare YAML frontmatter (no --- delimiters) as the format, but test fixtures use --- fences. Clarify which is canonical and ensure agents_get_prompt strips frontmatter consistently for both formats to avoid leaking contract fields into composed prompts."
+}

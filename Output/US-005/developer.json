@@ -1,0 +1,1 @@
+{"files_changed":["lib/loop.sh","karl.sh"],"summary":"Created lib/loop.sh with loop_run and loop_run_iteration that call prd_select_next and handle exit code 2 as a clean all-done exit. Updated karl.sh to source lib/prd.sh and lib/loop.sh, and replaced the placeholder comment with an actual loop_run call.","ready_for_test":true}

@@ -1,0 +1,65 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Audit lib/summarize.sh to confirm existing summarize_plan, summarize_review, summarize_tests, and summarize_implementation are present and correct. No changes needed if all four exist with correct fields and summary_type values.",
+      "files": ["lib/summarize.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Add summarize_architect function to lib/summarize.sh. Extract decision, implementation_notes (or notes), and adr_required from the architect JSON. Retain source_file reference and set summary_type='architect'. Follow the same shape as summarize_plan.",
+      "files": ["lib/summarize.sh"]
+    },
+    {
+      "step": 3,
+      "action": "Add 'architect' case to the summarize_artifact dispatcher in lib/summarize.sh so it routes to summarize_architect.",
+      "files": ["lib/summarize.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Persist review.json in planning_run_loop (lib/planning.sh). After the reviewer returns 'approve', call a new planning_persist_review helper (or inline) to write review_json to Output/<ticket_id>/review.json before returning. This makes the review a durable artifact that summarize_ticket_artifacts can later process.",
+      "files": ["lib/planning.sh"]
+    },
+    {
+      "step": 5,
+      "action": "Implement summarize_review in lib/summarize.sh (reviewer feedback: this step was missing from the prior plan). Extract decision and feedback array from review.json, retain source_file, set summary_type='review', and include feedback_count. Verify the function already exists before adding; if present and correct, document it here for clarity.",
+      "files": ["lib/summarize.sh"]
+    },
+    {
+      "step": 6,
+      "action": "Extend summarize_ticket_artifacts in lib/summarize.sh to also handle review.json (via summarize_review → review_summary.json) and architect.json (via summarize_architect → architect_summary.json), following the same pattern used for plan.json and tests.json.",
+      "files": ["lib/summarize.sh"]
+    },
+    {
+      "step": 7,
+      "action": "Add BATS tests in tests/summarize.bats for: (a) summarize_architect returns valid JSON with summary_type='architect', source_file, and key fields; (b) summarize_artifact dispatches to architect summarizer; (c) summarize_ticket_artifacts writes review_summary.json when review.json is present; (d) summarize_ticket_artifacts writes architect_summary.json when architect.json is present.",
+      "files": ["tests/summarize.bats"]
+    },
+    {
+      "step": 8,
+      "action": "Add a BATS test in tests/planning.bats verifying that planning_run_loop persists review.json to Output/<ticket_id>/review.json when the reviewer returns 'approve'.",
+      "files": ["tests/planning.bats"]
+    },
+    {
+      "step": 9,
+      "action": "Run the full BATS test suite (bats tests/) and confirm all tests pass including pre-existing tests. Fix any regressions before completing.",
+      "files": []
+    }
+  ],
+  "testing_recommendations": [
+    "Test summarize_architect produces valid JSON with summary_type='architect', source_file, and key architect fields (decision, adr_required)",
+    "Test summarize_artifact('architect', ...) dispatches correctly",
+    "Test summarize_ticket_artifacts writes review_summary.json when Output/<ticket_id>/review.json is present",
+    "Test summarize_ticket_artifacts writes architect_summary.json when Output/<ticket_id>/architect.json is present",
+    "Test summarize_ticket_artifacts count reflects review and architect additions",
+    "Test planning_run_loop persists review.json on 'approve' decision",
+    "Regression: all existing summarize.bats tests must continue to pass",
+    "Regression: all existing planning.bats tests must continue to pass"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "summarize_review may already exist in lib/summarize.sh — developer must check before adding to avoid duplicate function definitions",
+    "planning_run_loop currently only persists plan.json; adding review.json persistence requires careful placement so the review is saved on approve but not on revise iterations",
+    "summarize_ticket_artifacts counter variable must be incremented correctly for the two new artifact types to avoid false 'no summarizable artifacts' return"
+  ]
+}

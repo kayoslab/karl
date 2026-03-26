@@ -1,0 +1,42 @@
+{
+  "plan": [
+    {
+      "step": 1,
+      "action": "Add review.json to CLIPPY_EXPECTED_ARTIFACTS array in lib/artifacts.sh, and update the header comment to list it alongside the existing artifacts.",
+      "files": ["lib/artifacts.sh"]
+    },
+    {
+      "step": 2,
+      "action": "Add planning_persist_review function to lib/planning.sh. It should accept (output_dir, ticket_id, review_json), mkdir -p the ticket dir, and write review_json to Output/<ticket_id>/review.json — mirroring the existing planning_persist pattern.",
+      "files": ["lib/planning.sh"]
+    },
+    {
+      "step": 3,
+      "action": "In planning_run_loop (lib/planning.sh), call planning_persist_review immediately after planning_persist inside the approve branch, passing output_dir, ticket_id, and review_json.",
+      "files": ["lib/planning.sh"]
+    },
+    {
+      "step": 4,
+      "action": "Update tests/artifacts.bats: add review.json to any test that constructs a complete artifact set (used by artifacts_validate_complete and artifacts_summarize tests), and add a test verifying review.json appears in CLIPPY_EXPECTED_ARTIFACTS.",
+      "files": ["tests/artifacts.bats"]
+    },
+    {
+      "step": 5,
+      "action": "Update tests/planning.bats: add a test for planning_persist_review that verifies it writes review.json to Output/<ticket_id>/review.json, and add a test verifying planning_run_loop persists review.json when the reviewer approves.",
+      "files": ["tests/planning.bats"]
+    }
+  ],
+  "testing_recommendations": [
+    "Test planning_persist_review writes review.json to the correct path under Output/<ticket_id>/",
+    "Test planning_run_loop calls planning_persist_review on approve: verify Output/<ticket_id>/review.json exists after a successful loop run",
+    "Test that review.json is included in CLIPPY_EXPECTED_ARTIFACTS (artifacts_validate_complete must require it)",
+    "Test artifacts_validate_complete returns 1 and lists review.json as missing when it is absent",
+    "Test artifacts_summarize includes review.json in missing[] when absent and present[] when present",
+    "Ensure all existing artifacts.bats tests that construct a 'complete' artifact set now include review.json to avoid regressions"
+  ],
+  "estimated_complexity": "low",
+  "risks": [
+    "Existing tests/artifacts.bats tests that build a complete artifact set without review.json will start failing — all such fixtures must be updated in the same change",
+    "planning_run_loop only reaches the approve branch on success; the review_json variable is scoped inside the while loop — verify it is accessible at the persist call site (it is, based on current code structure)"
+  ]
+}

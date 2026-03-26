@@ -1,0 +1,6 @@
+{
+  "adr_required": false,
+  "adr_title": "",
+  "adr_content": "",
+  "notes": "No new ADR required. This ticket normalises existing logging behaviour rather than introducing a new architectural contract. The key constraint to honour: WARNING-level messages must go to stdout (not stderr) so operators see them in the main log stream — stderr is reserved for ERROR-level failures per the existing logging convention visible in loop.sh and rework.sh. Ensure the [clippy] WARNING: prefix is applied consistently before touching any existing log lines, as tests/cli.bats and tests/loop.bats grep for exact strings. The --max-retries and --dry-run flags are already parsed in clippy.sh; do not restructure argument parsing. All changes are purely normalisation and test coverage — no new data structures, no new lib modules, no changes to Output/ artefacts."
+}

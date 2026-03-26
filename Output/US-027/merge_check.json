@@ -1,0 +1,8 @@
+{
+  "checks": {
+    "clean_tree": true,
+    "main_exists": true,
+    "no_conflicts": true
+  },
+  "all_passed": true
+}
