@@ -3,14 +3,16 @@
 
 set -euo pipefail
 
-# loop_run_ticket <workspace_root> <story_json> <branch> [max_retries]
+# loop_run_ticket <workspace_root> <story_json> <branch> [max_retries] [skip_finalize]
 # Runs the full agent pipeline for a single ticket on the current feature branch.
+# When skip_finalize is "true", stops after the deployment gate (caller handles merge).
 # Returns 0 on success (ticket complete), 1 on failure.
 loop_run_ticket() {
   local workspace_root="${1:?workspace_root required}"
   local story_json="${2:?story_json required}"
   local branch="${3:?branch required}"
   local max_retries="${4:-10}"
+  local skip_finalize="${5:-false}"
 
   local story_id
   story_id=$(printf '%s' "${story_json}" | jq -r '.id // "unknown"')
@@ -63,7 +65,7 @@ loop_run_ticket() {
     return 1
   fi
 
-  # --- Commit any outstanding changes before merge check ---
+  # --- Commit any outstanding changes before merge ---
   if git -C "${workspace_root}" rev-parse --git-dir > /dev/null 2>&1; then
     if ! git -C "${workspace_root}" diff --quiet 2>/dev/null || \
        ! git -C "${workspace_root}" diff --cached --quiet 2>/dev/null; then
@@ -72,6 +74,12 @@ loop_run_ticket() {
         -m "chore: [${story_id}] commit outstanding changes before merge" \
         > /dev/null 2>&1 || true
     fi
+  fi
+
+  # In worktree mode, the supervisor handles merge via merge_arbitrator_merge
+  if [[ "${skip_finalize}" == "true" ]]; then
+    echo "[loop] Ticket ${story_id} pipeline complete (merge deferred to supervisor)"
+    return 0
   fi
 
   # --- Merge safety check ---
@@ -106,7 +114,7 @@ loop_run_iteration() {
   local story rc=0
   story=$(prd_select_next "${workspace_root}") || rc=$?
 
-  if [[ "${rc}" -eq 2 ]]; then
+  if [[ "${rc}" -eq 2 ]] || [[ "${rc}" -eq 3 ]]; then
     echo "karl: all stories complete — nothing left to do"
     return 2
   fi

@@ -27,6 +27,7 @@ Create a concrete implementation plan for the selected PRD ticket.
 - Keep plan concise
 - Prefer minimal change sets
 - Respect existing ADR decisions
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

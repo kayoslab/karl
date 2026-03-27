@@ -42,6 +42,7 @@ Implement the ticket according to the plan.
 - Do not refactor code outside the ticket scope
 - Prefer editing existing files over creating new ones
 - Follow existing coding conventions
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

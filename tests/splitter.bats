@@ -145,6 +145,95 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
+# splitter_validate_deps
+# ---------------------------------------------------------------------------
+
+@test "splitter_validate_deps passes for valid DAG" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001.1", "priority": 1, "passes": false, "depends_on": []},
+  {"id": "US-001.2", "priority": 2, "passes": false, "depends_on": ["US-001.1"]},
+  {"id": "US-002.1", "priority": 3, "passes": false, "depends_on": ["US-001.2"]}
+]
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "splitter_validate_deps passes with cross-story dependencies" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001.1", "priority": 1, "passes": false, "depends_on": []},
+  {"id": "US-001.2", "priority": 1, "passes": false, "depends_on": ["US-001.1"]},
+  {"id": "US-002.1", "priority": 2, "passes": false, "depends_on": []},
+  {"id": "US-002.2", "priority": 2, "passes": false, "depends_on": ["US-002.1", "US-001.2"]}
+]
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "splitter_validate_deps fails on dangling depends_on reference" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001.1", "priority": 1, "passes": false, "depends_on": ["US-999"]}
+]
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"non-existent"* ]]
+}
+
+@test "splitter_validate_deps fails on circular dependency" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "A", "priority": 1, "passes": false, "depends_on": ["B"]},
+  {"id": "B", "priority": 2, "passes": false, "depends_on": ["A"]}
+]
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Circular"* ]]
+}
+
+@test "splitter_validate_deps fails on transitive cycle" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "A", "priority": 1, "passes": false, "depends_on": ["C"]},
+  {"id": "B", "priority": 2, "passes": false, "depends_on": ["A"]},
+  {"id": "C", "priority": 3, "passes": false, "depends_on": ["B"]}
+]
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Circular"* ]]
+}
+
+@test "splitter_validate_deps passes with no depends_on fields" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false}
+]
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "splitter_validate_deps works with userStories format" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001.1", "priority": 1, "passes": false, "depends_on": []},
+    {"id": "US-001.2", "priority": 2, "passes": false, "depends_on": ["US-001.1"]}
+  ]
+}
+EOF
+  run splitter_validate_deps "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -eq 0 ]
+}
+
+# ---------------------------------------------------------------------------
 # splitter_run (requires mocked claude_invoke)
 # ---------------------------------------------------------------------------
 

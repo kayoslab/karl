@@ -21,6 +21,14 @@ supervisor_worker_loop() {
 
   echo "[worker-${instance_id}] Starting worker loop"
 
+  local consecutive_failures=0
+  local max_consecutive_failures=3
+
+  # Track per-ticket failure counts via temp files
+  local fail_dir
+  fail_dir="${base_dir}/.fail-counts"
+  mkdir -p "${fail_dir}"
+
   while true; do
     # Find the next available ticket
     local story rc=0
@@ -29,6 +37,13 @@ supervisor_worker_loop() {
     if [[ "${rc}" -eq 2 ]]; then
       echo "[worker-${instance_id}] All stories complete"
       return 0
+    fi
+
+    if [[ "${rc}" -eq 3 ]]; then
+      # Tickets exist but are blocked by dependencies or in_progress — wait and retry
+      echo "[worker-${instance_id}] No tickets available yet, waiting for dependencies..."
+      sleep 10
+      continue
     fi
 
     if [[ "${rc}" -ne 0 ]]; then
@@ -56,18 +71,24 @@ supervisor_worker_loop() {
     local wt_path
     wt_path=$(worktree_path "${story_id}" "${base_dir}")
 
-    if ! worktree_create "${workspace_root}" "${story_id}" "${branch}" "${base_dir}" 2>/dev/null; then
+    if ! worktree_create "${workspace_root}" "${story_id}" "${branch}" "${base_dir}"; then
       echo "[worker-${instance_id}] Failed to create worktree for ${story_id}" >&2
       prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
+      consecutive_failures=$((consecutive_failures + 1))
+      if [[ "${consecutive_failures}" -ge "${max_consecutive_failures}" ]]; then
+        echo "[worker-${instance_id}] ${max_consecutive_failures} consecutive failures — giving up" >&2
+        return 1
+      fi
+      sleep 2
       continue
     fi
 
     # Bootstrap workspace in the worktree (ensure Output/ etc. exist)
     workspace_init "${wt_path}" 2>/dev/null || true
 
-    # Run the ticket pipeline in the worktree
+    # Run the ticket pipeline in the worktree (skip finalize — supervisor handles merge)
     local ticket_rc=0
-    if ! loop_run_ticket "${wt_path}" "${story}" "${branch}" "${max_retries}"; then
+    if ! loop_run_ticket "${wt_path}" "${story}" "${branch}" "${max_retries}" "true"; then
       ticket_rc=1
     fi
 
@@ -77,10 +98,30 @@ supervisor_worker_loop() {
       if ! merge_arbitrator_merge "${workspace_root}" "${wt_path}" "${story_id}" "${branch}"; then
         echo "[worker-${instance_id}] Merge failed for ${story_id}" >&2
         prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
+      else
+        consecutive_failures=0
+        # Clear failure counter on success
+        rm -f "${fail_dir}/${story_id}" 2>/dev/null || true
       fi
     else
       echo "[worker-${instance_id}] Ticket ${story_id} failed" >&2
-      prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
+
+      # Track per-ticket failure count
+      local fail_count=0
+      local fail_file="${fail_dir}/${story_id}"
+      if [[ -f "${fail_file}" ]]; then
+        fail_count=$(cat "${fail_file}")
+      fi
+      fail_count=$((fail_count + 1))
+      printf '%d' "${fail_count}" > "${fail_file}"
+
+      if [[ "${fail_count}" -ge "${max_retries}" ]]; then
+        echo "[worker-${instance_id}] Ticket ${story_id} failed ${fail_count} times — marking as permanently failed" >&2
+        prd_fail_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
+      else
+        echo "[worker-${instance_id}] Ticket ${story_id} failed (attempt ${fail_count}/${max_retries}) — releasing for retry" >&2
+        prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
+      fi
     fi
 
     # Clean up worktree

@@ -52,6 +52,12 @@ worktree_create() {
     return 0
   fi
 
+  # Clean up stale branch from a previous failed run if needed
+  if git -C "${workspace_root}" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
+    echo "[worktree] Removing stale branch ${branch}" >&2
+    git -C "${workspace_root}" branch -D "${branch}" 2>/dev/null || true
+  fi
+
   if ! git -C "${workspace_root}" worktree add -b "${branch}" "${wt_path}" main 2>&1; then
     echo "ERROR: Failed to create worktree for ${ticket_id} at ${wt_path}" >&2
     return 1

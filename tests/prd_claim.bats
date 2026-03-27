@@ -237,6 +237,108 @@ EOF
   [ "${status_val}" = "in_progress" ]
 }
 
+# ---------------------------------------------------------------------------
+# prd_reset_in_progress
+# ---------------------------------------------------------------------------
+
+@test "prd_reset_in_progress resets in_progress tickets to available" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "title": "Story one", "priority": 1, "status": "in_progress", "claimed_by": "worker-1"},
+    {"id": "US-002", "title": "Story two", "priority": 2, "status": "pass", "passes": true}
+  ]
+}
+EOF
+  run prd_reset_in_progress "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+  local s1 s2 claimed
+  s1=$(jq -r '.userStories[0].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  s2=$(jq -r '.userStories[1].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  claimed=$(jq -r '.userStories[0].claimed_by // "null"' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${s1}" = "available" ]
+  [ "${s2}" = "pass" ]
+  [ "${claimed}" = "null" ]
+}
+
+@test "prd_reset_in_progress is a no-op when no tickets are in_progress" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "title": "Story one", "priority": 1, "status": "available"}
+  ]
+}
+EOF
+  run prd_reset_in_progress "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+  local s1
+  s1=$(jq -r '.userStories[0].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${s1}" = "available" ]
+}
+
+@test "prd_reset_in_progress returns 0 when prd.json does not exist" {
+  run prd_reset_in_progress "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+}
+
+# ---------------------------------------------------------------------------
+# prd_reset_failed
+# ---------------------------------------------------------------------------
+
+@test "prd_reset_failed resets fail tickets to available" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "title": "Story one", "priority": 1, "status": "fail"},
+    {"id": "US-002", "title": "Story two", "priority": 2, "status": "pass", "passes": true},
+    {"id": "US-003", "title": "Story three", "priority": 3, "status": "fail"}
+  ]
+}
+EOF
+  run prd_reset_failed "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+  local s1 s2 s3
+  s1=$(jq -r '.userStories[0].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  s2=$(jq -r '.userStories[1].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  s3=$(jq -r '.userStories[2].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${s1}" = "available" ]
+  [ "${s2}" = "pass" ]
+  [ "${s3}" = "available" ]
+}
+
+@test "prd_reset_failed is a no-op when no tickets are failed" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "title": "Story one", "priority": 1, "status": "available"}
+  ]
+}
+EOF
+  run prd_reset_failed "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+  local s1
+  s1=$(jq -r '.userStories[0].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${s1}" = "available" ]
+}
+
+@test "prd_reset_failed returns 0 when prd.json does not exist" {
+  run prd_reset_failed "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+}
+
+@test "prd_reset_failed works with flat array format" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "title": "Story one", "priority": 1, "status": "fail"}
+]
+EOF
+  run prd_reset_failed "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+  local s1
+  s1=$(jq -r '.[0].status' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${s1}" = "available" ]
+}
+
 @test "prd_complete_ticket works with flat array format" {
   make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
 [

@@ -50,6 +50,7 @@ prd_validate() {
 # Accepts both flat-array and { userStories: [...] } formats.
 # Returns 0 and prints JSON object on success.
 # Returns 2 if all stories pass (clean all-done exit).
+# Returns 3 if no stories are available now but some are pending (in_progress/blocked).
 # Returns 1 on validation error.
 prd_next_story() {
   local prd_file="${1:?prd_file required}"
@@ -86,22 +87,38 @@ prd_next_story() {
     "${prd_file}" 2>/dev/null)
 
   if [[ -z "${story}" || "${story}" == "null" ]]; then
-    # Check if all stories are done (pass) vs some still in_progress/blocked
-    local all_done
-    all_done=$(jq \
+    # Check if all stories are terminal (pass or fail) vs some still in_progress/blocked
+    local all_terminal
+    all_terminal=$(jq \
       '(if type == "array" then . else .userStories end)
        | all(
            (if .status then .status
             elif .passes == true then "pass"
             else "available"
-            end) == "pass"
+            end) as $s
+           | ($s == "pass" or $s == "fail")
          )' \
       "${prd_file}" 2>/dev/null)
-    if [[ "${all_done}" == "true" ]]; then
+    if [[ "${all_terminal}" == "true" ]]; then
       return 2
     fi
-    # Some tickets exist but none are available (in_progress, blocked, etc.)
-    return 2
+    # Check if any tickets are in_progress — if so, worth waiting
+    local in_progress_count
+    in_progress_count=$(jq \
+      '(if type == "array" then . else .userStories end)
+       | [.[] | select(
+           (if .status then .status
+            elif .passes == true then "pass"
+            else "available"
+            end) == "in_progress"
+         )] | length' \
+      "${prd_file}" 2>/dev/null) || in_progress_count=0
+    if [[ "${in_progress_count}" -eq 0 ]]; then
+      # No tickets in_progress and none selectable — deadlocked (deps on failed tickets)
+      return 2
+    fi
+    # Some tickets are in_progress — wait for them to complete
+    return 3
   fi
 
   printf '%s\n' "${story}"
@@ -112,6 +129,7 @@ prd_next_story() {
 # Reads <workspace_root>/Input/prd.json and prints the next unfinished story.
 # Returns 0 on success with JSON printed to stdout.
 # Returns 2 with informational message when all stories are done.
+# Returns 3 when no stories are available now but some are pending (in_progress/blocked).
 # Returns 1 on validation error.
 prd_select_next() {
   local workspace_root="${1:?workspace_root required}"
@@ -123,6 +141,9 @@ prd_select_next() {
     if [[ "${rc}" -eq 2 ]]; then
       echo "karl: all stories complete — nothing left to do"
       return 2
+    fi
+    if [[ "${rc}" -eq 3 ]]; then
+      return 3
     fi
     return 1
   fi

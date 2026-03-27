@@ -121,6 +121,131 @@ prd_release_ticket() {
   return 0
 }
 
+# prd_reset_in_progress <workspace_root>
+# Reset all "in_progress" tickets back to "available".
+# Called on startup to recover from a previous crash.
+# Returns 0 on success, 1 on failure.
+prd_reset_in_progress() {
+  local workspace_root="${1:?workspace_root required}"
+
+  local prd_file="${workspace_root}/Input/prd.json"
+  if [[ ! -f "${prd_file}" ]]; then
+    return 0
+  fi
+
+  # Check if there are any in_progress tickets
+  local count
+  count=$(jq \
+    '(if type == "array" then . else .userStories end)
+     | [.[] | select(.status == "in_progress")] | length' \
+    "${prd_file}" 2>/dev/null) || return 0
+
+  if [[ "${count}" -eq 0 ]]; then
+    return 0
+  fi
+
+  if ! _prd_lock_acquire "${workspace_root}"; then
+    return 1
+  fi
+
+  local updated
+  updated=$(jq \
+    'if type == "array"
+     then [.[] | if .status == "in_progress" then .status = "available" | del(.claimed_by) else . end]
+     else .userStories = [.userStories[] | if .status == "in_progress" then .status = "available" | del(.claimed_by) else . end]
+     end' \
+    "${prd_file}") || {
+    _prd_lock_release "${workspace_root}"
+    return 1
+  }
+
+  printf '%s\n' "${updated}" > "${prd_file}"
+  _prd_lock_release "${workspace_root}"
+
+  echo "[prd_claim] Reset ${count} in-progress ticket(s) to available"
+  return 0
+}
+
+# prd_reset_failed <workspace_root>
+# Reset all "fail" tickets back to "available" so they can be retried.
+# Called on startup to recover from previous run failures.
+# Returns 0 on success, 1 on failure.
+prd_reset_failed() {
+  local workspace_root="${1:?workspace_root required}"
+
+  local prd_file="${workspace_root}/Input/prd.json"
+  if [[ ! -f "${prd_file}" ]]; then
+    return 0
+  fi
+
+  # Check if there are any failed tickets
+  local count
+  count=$(jq \
+    '(if type == "array" then . else .userStories end)
+     | [.[] | select(.status == "fail")] | length' \
+    "${prd_file}" 2>/dev/null) || return 0
+
+  if [[ "${count}" -eq 0 ]]; then
+    return 0
+  fi
+
+  if ! _prd_lock_acquire "${workspace_root}"; then
+    return 1
+  fi
+
+  local updated
+  updated=$(jq \
+    'if type == "array"
+     then [.[] | if .status == "fail" then .status = "available" | del(.claimed_by) else . end]
+     else .userStories = [.userStories[] | if .status == "fail" then .status = "available" | del(.claimed_by) else . end]
+     end' \
+    "${prd_file}") || {
+    _prd_lock_release "${workspace_root}"
+    return 1
+  }
+
+  printf '%s\n' "${updated}" > "${prd_file}"
+  _prd_lock_release "${workspace_root}"
+
+  echo "[prd_claim] Reset ${count} failed ticket(s) to available"
+  return 0
+}
+
+# prd_fail_ticket <workspace_root> <ticket_id>
+# Set status="fail" for the given ticket (permanent failure, not retryable).
+# Returns 0 on success, 1 on failure.
+prd_fail_ticket() {
+  local workspace_root="${1:?workspace_root required}"
+  local ticket_id="${2:?ticket_id required}"
+
+  local prd_file="${workspace_root}/Input/prd.json"
+  if [[ ! -f "${prd_file}" ]]; then
+    echo "ERROR: prd.json not found at ${prd_file}" >&2
+    return 1
+  fi
+
+  if ! _prd_lock_acquire "${workspace_root}"; then
+    return 1
+  fi
+
+  local updated
+  updated=$(jq --arg id "${ticket_id}" \
+    'if type == "array"
+     then [.[] | if .id == $id then .status = "fail" | del(.claimed_by) else . end]
+     else .userStories = [.userStories[] | if .id == $id then .status = "fail" | del(.claimed_by) else . end]
+     end' \
+    "${prd_file}") || {
+    _prd_lock_release "${workspace_root}"
+    return 1
+  }
+
+  printf '%s\n' "${updated}" > "${prd_file}"
+  _prd_lock_release "${workspace_root}"
+
+  echo "[prd_claim] Ticket ${ticket_id} marked as failed"
+  return 0
+}
+
 # prd_complete_ticket <workspace_root> <ticket_id>
 # Set status="pass" and passes=true for the given ticket.
 # Returns 0 on success, 1 on failure.

@@ -47,6 +47,7 @@ Write and run tests for the implementation.
 - Prefer simple deterministic tests
 - Avoid excessive coverage beyond ticket scope
 - Set failure_source to "test" when the test logic is wrong, "implementation" when the code is wrong
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

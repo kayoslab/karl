@@ -84,6 +84,14 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+@test "worktree_create succeeds when stale branch exists from previous failed run" {
+  # Simulate a stale branch left behind by a failed worktree creation
+  git -C "${WORKSPACE_ROOT}" branch "feature/US-003-stale" main
+  run worktree_create "${WORKSPACE_ROOT}" "US-003" "feature/US-003-stale" "${WORKTREE_BASE}"
+  [ "$status" -eq 0 ]
+  [ -d "${WORKTREE_BASE}/US-003" ]
+}
+
 @test "worktree_create contains files from main" {
   worktree_create "${WORKSPACE_ROOT}" "US-001" "feature/US-001-test" "${WORKTREE_BASE}"
   [ -f "${WORKTREE_BASE}/US-001/README.md" ]

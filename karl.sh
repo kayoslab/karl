@@ -258,6 +258,17 @@ main() {
 
   echo "karl: workspace ready, lock acquired (PID $$) [max-retries=${MAX_RETRIES}]"
 
+  # Clean up stale PRD lock from a previous crash (safe: we hold the main LOCK
+  # and no workers are running yet)
+  _prd_lock_release "${WORKSPACE_ROOT}"
+
+  # Recover from a previous crash/failure: reset in_progress and failed tickets
+  prd_reset_in_progress "${WORKSPACE_ROOT}"
+  prd_reset_failed "${WORKSPACE_ROOT}"
+
+  # Run tech discovery once before the main loop (creates Output/tech.md if missing)
+  tech_discover "${WORKSPACE_ROOT}"
+
   if [[ "${NUM_INSTANCES}" -gt 1 ]]; then
     echo "karl: multi-instance mode with ${NUM_INSTANCES} workers"
     supervisor_run "${WORKSPACE_ROOT}" "${NUM_INSTANCES}" "${MAX_RETRIES}" "${WORKTREE_DIR}"

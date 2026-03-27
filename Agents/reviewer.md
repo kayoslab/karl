@@ -24,6 +24,7 @@ Review the implementation plan for the selected PRD ticket.
 ## Constraints
 - Keep review concise
 - Base decisions on ticket acceptance criteria only
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

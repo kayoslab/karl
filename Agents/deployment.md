@@ -39,6 +39,7 @@ Verify that the implementation satisfies all quality gates before it is committe
 - gates_checked must include both "tests" and "typecheck"
 - Report specific failure messages in the failures array
 - decision must be exactly "pass" or "fail"
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

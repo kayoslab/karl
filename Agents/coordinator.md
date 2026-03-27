@@ -23,6 +23,7 @@ Analyze file overlap between concurrent karl workers and decide if intervention 
 - Files like prd.json and progress.md are expected to overlap and should be ignored
 - Test file overlap is low risk if the tests cover different features
 - Implementation file overlap is high risk and should trigger a pause
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

@@ -103,6 +103,71 @@ splitter_apply_decisions() {
   return 0
 }
 
+# splitter_validate_deps <prd_file>
+# Validate that all depends_on references in the PRD point to existing ticket IDs
+# and the dependency graph has no cycles (is a DAG).
+# Returns 0 on valid, 1 on error.
+splitter_validate_deps() {
+  local prd_file="${1:?prd_file required}"
+
+  if [[ ! -f "${prd_file}" ]]; then
+    echo "ERROR: prd.json not found at ${prd_file}" >&2
+    return 1
+  fi
+
+  # Check for dangling depends_on references
+  local dangling
+  dangling=$(jq -r \
+    '(if type == "array" then . else .userStories end) as $all
+     | [$all[].id] as $ids
+     | [$all[] | .depends_on // [] | .[] | select(. as $d | $ids | index($d) | not)]
+     | unique | .[]' \
+    "${prd_file}" 2>/dev/null) || true
+
+  if [[ -n "${dangling}" ]]; then
+    echo "ERROR: depends_on references non-existent ticket(s): ${dangling}" >&2
+    return 1
+  fi
+
+  # Check for cycles via Kahn's algorithm (topological sort) in jq.
+  # If not all nodes are processed, there is a cycle.
+  local cycle_check
+  cycle_check=$(jq -r \
+    '(if type == "array" then . else .userStories end) as $all
+     | ($all | length) as $total
+     | ($all | map({key: .id, value: (.depends_on // [])}) | from_entries) as $deps
+     # In-degree = number of dependencies each node has
+     | (reduce $all[] as $t ({}; . + {($t.id): ($t.depends_on // [] | length)}))
+     | {indeg: ., processed: 0, deps: $deps, ids: [$all[].id]}
+     | until(
+         ([.ids[] as $id | if .indeg[$id] == 0 then $id else empty end] | length) == 0;
+         ([.ids[] as $id | if .indeg[$id] == 0 then $id else empty end]) as $ready
+         | reduce $ready[] as $node (.;
+             .processed += 1
+             | .indeg[$node] = -1
+             | reduce (.ids[] as $id
+                 | if ((.deps[$id] // []) | index($node)) != null then $id else empty end
+               ) as $child (.;
+                 .indeg[$child] = (.indeg[$child] - 1)
+               )
+           )
+       )
+     | if .processed < $total then "cycle" else "ok" end' \
+    "${prd_file}" 2>/dev/null) || cycle_check="error"
+
+  if [[ "${cycle_check}" == "cycle" ]]; then
+    echo "ERROR: Circular dependency detected in ticket dependency graph" >&2
+    return 1
+  fi
+
+  if [[ "${cycle_check}" != "ok" ]]; then
+    echo "ERROR: Failed to validate dependency graph" >&2
+    return 1
+  fi
+
+  return 0
+}
+
 # splitter_run <workspace_root>
 # Read prd.json, invoke splitter agent, apply decisions.
 # Returns 0 on success, 1 on error.
@@ -138,6 +203,13 @@ splitter_run() {
 
   echo "[splitter] Applying ${split_count} split decision(s)..."
   if ! splitter_apply_decisions "${prd_file}" "${response}"; then
+    return 1
+  fi
+
+  # Validate dependency graph after applying splits
+  echo "[splitter] Validating dependency graph..."
+  if ! splitter_validate_deps "${prd_file}"; then
+    echo "ERROR: Dependency validation failed after split — PRD may have dangling refs or cycles" >&2
     return 1
   fi
 

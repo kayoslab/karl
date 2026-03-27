@@ -28,6 +28,7 @@ Evaluate the architectural impact of the plan and produce an ADR entry if needed
 ## Constraints
 - Only create ADR entries for significant architectural decisions
 - Keep ADR entries concise and decision-focused
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

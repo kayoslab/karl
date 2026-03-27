@@ -32,6 +32,7 @@ Resolve merge conflicts between a feature branch and the main branch.
 - When changes overlap, prefer the feature branch intent
 - Never silently drop changes from either side
 - If resolution is unclear, mark as unresolvable
+- NEVER modify Input/prd.json or Output/progress.md — these files are managed exclusively by karl's orchestration layer
 
 ## Output Format
 

@@ -165,6 +165,32 @@ EOF
   [[ "$output" == *"all stories complete"* ]]
 }
 
+@test "prd_next_story returns 3 when tickets exist but all are blocked by dependencies" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "title": "Setup", "priority": 1, "status": "in_progress"},
+    {"id": "US-002", "title": "Feature", "priority": 2, "passes": false, "depends_on": ["US-001"]}
+  ]
+}
+EOF
+  run prd_next_story "${WORKSPACE_ROOT}/Input/prd.json"
+  [ "$status" -eq 3 ]
+}
+
+@test "prd_select_next returns 3 when tickets are pending but none available" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "title": "Setup", "priority": 1, "status": "in_progress"},
+    {"id": "US-002", "title": "Feature", "priority": 2, "passes": false, "depends_on": ["US-001"]}
+  ]
+}
+EOF
+  run prd_select_next "${WORKSPACE_ROOT}"
+  [ "$status" -eq 3 ]
+}
+
 @test "prd_select_next returns 1 when prd.json is malformed" {
   echo "invalid" > "${WORKSPACE_ROOT}/Input/prd.json"
   run prd_select_next "${WORKSPACE_ROOT}"
