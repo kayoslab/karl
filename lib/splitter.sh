@@ -3,40 +3,15 @@
 
 set -euo pipefail
 
-# splitter_run_agent <agents_dir> <prd_json>
-# Invoke the splitter agent via claude_invoke.
+# splitter_run_agent <prd_json>
+# Invoke the splitter subagent via Claude Code.
 # Prints the agent response JSON to stdout.
 splitter_run_agent() {
-  local agents_dir="${1:?agents_dir required}"
-  local prd_json="${2:?prd_json required}"
-
-  local prompt
-  prompt=$(agents_get_prompt "${agents_dir}" "splitter") || return 1
-
-  # Manual substitution for {{prd}} since agents_compose_prompt doesn't handle it
-  prompt=$(printf '%s\n' "${prompt}" | \
-    KARL_PRD="${prd_json}" \
-    awk '
-      function str_replace(hay, needle, rep,    result, pos, len) {
-        result = ""
-        len = length(needle)
-        while ((pos = index(hay, needle)) > 0) {
-          result = result substr(hay, 1, pos - 1) rep
-          hay = substr(hay, pos + len)
-        }
-        return result hay
-      }
-      {
-        line = $0
-        line = str_replace(line, "{{prd}}", ENVIRON["KARL_PRD"])
-        print line
-      }
-    ')
+  local prd_json="${1:?prd_json required}"
 
   local response
-  response=$(printf '%s\n' "${prompt}" | claude_invoke --print --output-format text) || return 1
-
-  if ! printf '%s' "${response}" | jq . > /dev/null 2>&1; then
+  if ! response=$(subagent_invoke_json "splitter" \
+    "Analyze this PRD and return ONLY a JSON object with split_decisions. No prose, no markdown, no explanation — just the JSON. PRD: ${prd_json}"); then
     echo "ERROR: Splitter agent returned invalid JSON" >&2
     return 1
   fi
@@ -184,10 +159,9 @@ splitter_run() {
   prd_content=$(cat "${prd_file}")
 
   echo "[splitter] Analyzing tickets for splitting..."
-  local agents_dir="${KARL_DIR}/Agents"
 
   local response
-  if ! response=$(cd "${workspace_root}" && splitter_run_agent "${agents_dir}" "${prd_content}"); then
+  if ! response=$(cd "${workspace_root}" && splitter_run_agent "${prd_content}"); then
     echo "ERROR: Splitter agent failed" >&2
     return 1
   fi
@@ -214,5 +188,89 @@ splitter_run() {
   fi
 
   echo "[splitter] Split complete"
+  return 0
+}
+
+# splitter_analyze_deps <workspace_root>
+# Asks the splitter agent to analyze stories for missing dependencies,
+# applies any dependency updates, and validates the graph.
+# Runs regardless of --split — even unsplit stories can have implicit deps.
+# Returns 0 on success, 1 on error.
+splitter_analyze_deps() {
+  local workspace_root="${1:?workspace_root required}"
+  local prd_file="${workspace_root}/Input/prd.json"
+
+  if [[ ! -f "${prd_file}" ]]; then
+    return 0
+  fi
+
+  local prd_content
+  prd_content=$(cat "${prd_file}")
+
+  echo "[deps] Analyzing story dependencies..."
+
+  # Extract valid IDs so the agent only references existing tickets
+  local valid_ids
+  valid_ids=$(jq -r '(if type == "array" then . else .userStories end) | .[].id' "${prd_file}" | tr '\n' ', ')
+
+  local response
+  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "splitter" \
+    "Analyze these stories for MISSING dependencies only. Do NOT split any tickets. For each story, check if it logically depends on another story that is not listed in its depends_on. IMPORTANT: Only use these existing ticket IDs in add_depends_on: ${valid_ids} — do NOT reference IDs that are not in this list. Return ONLY a JSON object. Format: {\"dependency_updates\": [{\"id\": \"US-003\", \"add_depends_on\": [\"US-002\"]}]} If no dependencies are missing, return {\"dependency_updates\": []}. PRD: ${prd_content}"); then
+    echo "[deps] WARNING: Dependency analysis agent failed — skipping" >&2
+    # Non-fatal: still validate what we have
+  else
+    # Apply dependency updates
+    local update_count
+    update_count=$(printf '%s' "${response}" | jq '.dependency_updates // [] | length' 2>/dev/null) || update_count=0
+
+    if [[ "${update_count}" -gt 0 ]]; then
+      echo "[deps] Adding ${update_count} missing dependency relationship(s)..."
+
+      local updated
+      local is_array
+      is_array=$(jq 'type == "array"' "${prd_file}")
+
+      if [[ "${is_array}" == "true" ]]; then
+        updated=$(jq --argjson updates "${response}" \
+          '($updates.dependency_updates // []) as $deps_updates
+           | [.[] | . as $ticket
+             | ([$deps_updates[] | select(.id == $ticket.id) | .add_depends_on // []] | add // []) as $new_deps
+             | .depends_on = ((.depends_on // []) + $new_deps | unique)
+           ]' "${prd_file}" 2>/dev/null) || updated=""
+      else
+        updated=$(jq --argjson updates "${response}" \
+          '($updates.dependency_updates // []) as $deps_updates
+           | .userStories = [.userStories[] | . as $ticket
+             | ([$deps_updates[] | select(.id == $ticket.id) | .add_depends_on // []] | add // []) as $new_deps
+             | .depends_on = ((.depends_on // []) + $new_deps | unique)
+           ]' "${prd_file}" 2>/dev/null) || updated=""
+      fi
+
+      if [[ -n "${updated}" ]] && printf '%s' "${updated}" | jq . > /dev/null 2>&1; then
+        # Strip any depends_on references to non-existent IDs (defense against hallucination)
+        updated=$(printf '%s' "${updated}" | jq \
+          '(if type == "array" then . else .userStories end) as $all
+           | [$all[].id] as $valid_ids
+           | if type == "array"
+             then [.[] | .depends_on = ([(.depends_on // [])[] | select(. as $d | $valid_ids | index($d) | . != null)])]
+             else .userStories = [.userStories[] | .depends_on = ([(.depends_on // [])[] | select(. as $d | $valid_ids | index($d) | . != null)])]
+             end')
+        printf '%s\n' "${updated}" > "${prd_file}"
+      else
+        echo "[deps] WARNING: Failed to apply dependency updates — continuing with existing deps" >&2
+      fi
+    else
+      echo "[deps] No missing dependencies found"
+    fi
+  fi
+
+  # Always validate the graph
+  echo "[deps] Validating dependency graph..."
+  if ! splitter_validate_deps "${prd_file}"; then
+    echo "ERROR: Dependency graph is invalid — fix depends_on in prd.json" >&2
+    return 1
+  fi
+
+  echo "[deps] Dependency graph valid"
   return 0
 }

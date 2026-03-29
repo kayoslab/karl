@@ -8,7 +8,7 @@ setup() {
   WORKTREE_BASE="$(mktemp -d)"
   mkdir -p "${WORKSPACE_ROOT}/Input" "${WORKSPACE_ROOT}/Output"
 
-  # Source all required libs
+  # Source required libs
   # shellcheck source=../lib/prd.sh
   source "${KARL_DIR}/lib/prd.sh"
   # shellcheck source=../lib/prd_claim.sh
@@ -23,21 +23,14 @@ setup() {
   source "${KARL_DIR}/lib/merge_arbitrator.sh"
   # shellcheck source=../lib/commit.sh
   source "${KARL_DIR}/lib/commit.sh"
-  # shellcheck source=../lib/coordinator.sh
-  source "${KARL_DIR}/lib/coordinator.sh"
   # shellcheck source=../lib/supervisor.sh
   source "${KARL_DIR}/lib/supervisor.sh"
 }
 
 teardown() {
-  # Clean up any worktrees
   git -C "${WORKSPACE_ROOT}" worktree prune 2>/dev/null || true
   rm -rf "${WORKSPACE_ROOT}" "${WORKTREE_BASE}"
 }
-
-# ---------------------------------------------------------------------------
-# supervisor_worker_loop (with mocked loop_run_ticket)
-# ---------------------------------------------------------------------------
 
 @test "supervisor_worker_loop returns 0 when all stories are already complete" {
   cat > "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
@@ -48,7 +41,6 @@ teardown() {
 }
 EOF
 
-  # Initialize git
   git -C "${WORKSPACE_ROOT}" init -b main > /dev/null 2>&1
   git -C "${WORKSPACE_ROOT}" config user.email "test@test.com" > /dev/null 2>&1
   git -C "${WORKSPACE_ROOT}" config user.name "Test" > /dev/null 2>&1
@@ -59,10 +51,6 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"All stories complete"* ]]
 }
-
-# ---------------------------------------------------------------------------
-# supervisor_run (basic validation)
-# ---------------------------------------------------------------------------
 
 @test "supervisor_run completes when all stories are already done" {
   cat > "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'

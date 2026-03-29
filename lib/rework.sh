@@ -1,80 +1,67 @@
 #!/usr/bin/env bash
-# rework.sh - Developer/tester rework loop for karl
+# rework.sh - Developer/tester rework loop
 
 set -euo pipefail
 
-# rework_loop <workspace_root> <ticket_id> <ticket_json> [max_retries]
-# Runs the developer+tester rework cycle until tests pass or the retry limit
-# is reached.
-# Returns 0 when the ticket passes.
-# Returns 1 when the retry limit is reached.
+# rework_loop <workspace_root> <story_id> <story_json> [max_retries]
+# Alternates developer and tester until tests pass or limit reached.
+# Returns 0 on success, 1 on failure.
 rework_loop() {
   local workspace_root="${1:?workspace_root required}"
-  local ticket_id="${2:?ticket_id required}"
-  local ticket_json="${3:?ticket_json required}"
+  local story_id="${2:?story_id required}"
+  local story_json="${3:?story_json required}"
   local max_retries="${4:-10}"
 
-  echo "[rework] Starting rework loop for [${ticket_id}] (max-retries=${max_retries})..."
+  local artifact_dir="${workspace_root}/Output/${story_id}"
+  local plan=""
+  [[ -f "${artifact_dir}/plan.json" ]] && plan=$(cat "${artifact_dir}/plan.json")
+  local tech=""
+  [[ -f "${workspace_root}/Output/tech.md" ]] && tech=$(cat "${workspace_root}/Output/tech.md")
 
-  local skip_developer=0
-  local cycle=0
+  local attempt=0
+  local skip_developer="false"
 
-  while true; do
-    cycle=$(( cycle + 1 ))
-    echo "[rework] Verification cycle ${cycle}/${max_retries}"
+  while [[ "${attempt}" -lt "${max_retries}" ]]; do
+    attempt=$((attempt + 1))
 
-    # Check limit before attempting a cycle.
-    if ! retry_check "${workspace_root}" "${ticket_id}" "${max_retries}"; then
-      echo "[rework] Retry limit reached for ticket ${ticket_id} (max-retries=${max_retries}). Stopping."
-      retry_exceeded_persist "${workspace_root}" "${ticket_id}" "${max_retries}"
-      return 1
-    fi
-
-    # Run the developer agent (skipped when the previous failure was a test fix).
-    if [[ "${skip_developer}" -eq 0 ]]; then
-      # Read failures from last tester run so the developer knows what to fix
-      local failures=""
-      local failures_file="${workspace_root}/Output/${ticket_id}/last_failures"
-      if [[ -f "${failures_file}" ]]; then
-        failures=$(cat "${failures_file}")
-      fi
-
+    # Developer pass (skip if tester is self-correcting)
+    if [[ "${skip_developer}" == "false" ]]; then
       local mode="implement"
-      if [[ "${cycle}" -gt 1 ]]; then
-        mode="fix"
-      fi
-
-      if ! developer_run "${workspace_root}" "${ticket_id}" "${ticket_json}" "${failures}" "${mode}"; then
-        retry_increment "${workspace_root}" "${ticket_id}"
-        continue
+      [[ "${attempt}" -gt 1 ]] && mode="fix"
+      echo "[rework] Developer attempt ${attempt}/${max_retries} for ${story_id} (mode: ${mode})..."
+      if ! developer_run "${workspace_root}" "${story_json}" "${mode}"; then
+        echo "ERROR: Developer failed on attempt ${attempt}" >&2
+        return 1
       fi
     fi
-    skip_developer=0
+    skip_developer="false"
 
-    # Run the tester agent.
-    if tester_run "${workspace_root}" "${ticket_id}" "${ticket_json}"; then
-      # Tests pass — commit and complete.
+    # Tester verification
+    echo "[rework] Tester verification for ${story_id}..."
+    if tester_verify "${workspace_root}" "${story_json}" "${plan}" "${tech}"; then
+      echo "[rework] All tests passing for ${story_id}"
       git -C "${workspace_root}" add -A > /dev/null 2>&1 || true
-      git -C "${workspace_root}" commit --allow-empty \
-        -m "feat: [${ticket_id}] rework complete — all tests passing" \
-        > /dev/null 2>&1 || true
+      git -C "${workspace_root}" commit -m "rework: [${story_id}] all tests passing" > /dev/null 2>&1 || true
       return 0
     fi
 
-    # Tests failed — check whether the failure is in the test or implementation.
-    local failure_source_file="${workspace_root}/Output/${ticket_id}/last_failure_source"
+    # Check failure source
     local failure_source="implementation"
-    if [[ -f "${failure_source_file}" ]]; then
-      failure_source=$(cat "${failure_source_file}")
-    fi
+    [[ -f "${artifact_dir}/failure_source.txt" ]] && failure_source=$(cat "${artifact_dir}/failure_source.txt")
 
     if [[ "${failure_source}" == "test" ]]; then
-      # Tester-fix path: let the tester correct the incorrect test.
-      tester_fix_run "${workspace_root}" "${ticket_id}" "${ticket_json}" || true
-      skip_developer=1
+      echo "[rework] Test failure is in test logic — tester self-correcting..."
+      if tester_fix "${workspace_root}" "${story_json}" "${plan}" "${tech}"; then
+        skip_developer="true"
+      fi
+    else
+      echo "[rework] Test failure is in implementation — developer will retry..."
     fi
-
-    # Increment and try again.
-    retry_increment "${workspace_root}" "${ticket_id}"
   done
+
+  echo "ERROR: Rework loop exhausted (${max_retries} attempts) for ${story_id}" >&2
+  mkdir -p "${artifact_dir}"
+  printf '{"story_id":"%s","retries":%d,"reason":"rework limit exceeded"}\n' \
+    "${story_id}" "${max_retries}" > "${artifact_dir}/retry_exceeded.json"
+  return 1
 }

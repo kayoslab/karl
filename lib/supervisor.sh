@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # supervisor_worker_loop <workspace_root> <instance_id> <max_retries> [worktree_dir]
-# Worker loop: claim ticket → create worktree → run ticket → merge → cleanup → repeat.
+# Worker loop: claim ticket -> worktree -> run pipeline -> merge -> cleanup -> repeat.
 # Returns 0 when no more tickets are available, 1 on fatal error.
 supervisor_worker_loop() {
   local workspace_root="${1:?workspace_root required}"
@@ -23,14 +23,10 @@ supervisor_worker_loop() {
 
   local consecutive_failures=0
   local max_consecutive_failures=3
-
-  # Track per-ticket failure counts via temp files
-  local fail_dir
-  fail_dir="${base_dir}/.fail-counts"
+  local fail_dir="${base_dir}/.fail-counts"
   mkdir -p "${fail_dir}"
 
   while true; do
-    # Find the next available ticket
     local story rc=0
     story=$(prd_select_next "${workspace_root}") || rc=$?
 
@@ -38,33 +34,28 @@ supervisor_worker_loop() {
       echo "[worker-${instance_id}] All stories complete"
       return 0
     fi
-
     if [[ "${rc}" -eq 3 ]]; then
-      # Tickets exist but are blocked by dependencies or in_progress — wait and retry
-      echo "[worker-${instance_id}] No tickets available yet, waiting for dependencies..."
+      # Only log the first wait, then stay quiet
+      if [[ "${waiting_logged:-false}" == "false" ]]; then
+        echo "[worker-${instance_id}] Waiting for dependencies..."
+        waiting_logged="true"
+      fi
       sleep 10
       continue
     fi
-
-    if [[ "${rc}" -ne 0 ]]; then
-      echo "[worker-${instance_id}] Error reading PRD" >&2
-      return 1
-    fi
+    waiting_logged="false"
+    [[ "${rc}" -ne 0 ]] && { echo "[worker-${instance_id}] Error reading PRD" >&2; return 1; }
 
     local story_id story_title
     story_id=$(printf '%s' "${story}" | jq -r '.id // "unknown"')
     story_title=$(printf '%s' "${story}" | jq -r '.title // ""')
 
-    # Try to claim the ticket atomically
     if ! prd_claim_ticket "${workspace_root}" "${story_id}" "worker-${instance_id}" 2>/dev/null; then
-      # Another worker claimed it; try next
       sleep 0.2
       continue
     fi
 
     echo "[worker-${instance_id}] Claimed ticket ${story_id}"
-
-    # Create feature branch name and worktree
     local branch
     branch=$(branch_name "${story_id}" "${story_title}")
 
@@ -75,66 +66,49 @@ supervisor_worker_loop() {
       echo "[worker-${instance_id}] Failed to create worktree for ${story_id}" >&2
       prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
       consecutive_failures=$((consecutive_failures + 1))
-      if [[ "${consecutive_failures}" -ge "${max_consecutive_failures}" ]]; then
-        echo "[worker-${instance_id}] ${max_consecutive_failures} consecutive failures — giving up" >&2
-        return 1
-      fi
+      [[ "${consecutive_failures}" -ge "${max_consecutive_failures}" ]] && return 1
       sleep 2
       continue
     fi
 
-    # Bootstrap workspace in the worktree (ensure Output/ etc. exist)
     workspace_init "${wt_path}" 2>/dev/null || true
 
-    # Run the ticket pipeline in the worktree (skip finalize — supervisor handles merge)
     local ticket_rc=0
-    if ! loop_run_ticket "${wt_path}" "${story}" "${branch}" "${max_retries}" "true"; then
-      ticket_rc=1
-    fi
+    loop_run_ticket "${wt_path}" "${story}" "${branch}" "${max_retries}" "true" || ticket_rc=1
 
     if [[ "${ticket_rc}" -eq 0 ]]; then
-      # Merge to main via the arbitrator
       echo "[worker-${instance_id}] Merging ${story_id} to main..."
       if ! merge_arbitrator_merge "${workspace_root}" "${wt_path}" "${story_id}" "${branch}"; then
-        echo "[worker-${instance_id}] Merge failed for ${story_id}" >&2
+        worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
         prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
       else
         consecutive_failures=0
-        # Clear failure counter on success
         rm -f "${fail_dir}/${story_id}" 2>/dev/null || true
+        worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
       fi
     else
       echo "[worker-${instance_id}] Ticket ${story_id} failed" >&2
-
-      # Track per-ticket failure count
       local fail_count=0
-      local fail_file="${fail_dir}/${story_id}"
-      if [[ -f "${fail_file}" ]]; then
-        fail_count=$(cat "${fail_file}")
-      fi
+      [[ -f "${fail_dir}/${story_id}" ]] && fail_count=$(cat "${fail_dir}/${story_id}")
       fail_count=$((fail_count + 1))
-      printf '%d' "${fail_count}" > "${fail_file}"
+      printf '%d' "${fail_count}" > "${fail_dir}/${story_id}"
+
+      # Clean worktree before releasing to prevent race conditions
+      worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
 
       if [[ "${fail_count}" -ge "${max_retries}" ]]; then
-        echo "[worker-${instance_id}] Ticket ${story_id} failed ${fail_count} times — marking as permanently failed" >&2
+        echo "[worker-${instance_id}] Ticket ${story_id} permanently failed (${fail_count}/${max_retries})" >&2
         prd_fail_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
       else
-        echo "[worker-${instance_id}] Ticket ${story_id} failed (attempt ${fail_count}/${max_retries}) — releasing for retry" >&2
+        echo "[worker-${instance_id}] Ticket ${story_id} failed (${fail_count}/${max_retries}) — releasing" >&2
         prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
       fi
     fi
-
-    # Clean up worktree
-    worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
-
     echo "[worker-${instance_id}] Done with ${story_id}"
   done
 }
 
 # supervisor_run <workspace_root> <num_instances> <max_retries> [worktree_dir]
-# Spawn N background worker subshells, periodically run coordinator checks,
-# and wait for all workers to complete.
-# Returns 0 if all workers exit cleanly, 1 if any worker fails.
 supervisor_run() {
   local workspace_root="${1:?workspace_root required}"
   local num_instances="${2:?num_instances required}"
@@ -154,50 +128,39 @@ supervisor_run() {
   local -a worker_pids=()
   local i
 
+  # Kill all child processes (workers + their claude subprocesses) on interrupt
+  _supervisor_cleanup() {
+    echo "" >&2
+    echo "[supervisor] Interrupted — killing all workers..." >&2
+    for pid in "${worker_pids[@]}"; do
+      # Kill the worker's entire process group
+      kill -- -"${pid}" 2>/dev/null || kill "${pid}" 2>/dev/null || true
+    done
+    # Also kill any claude processes spawned by this session
+    pkill -P $$ 2>/dev/null || true
+    echo "[supervisor] Cleaning up worktrees..." >&2
+    worktree_cleanup_all "${workspace_root}" "${base_dir}" 2>/dev/null || true
+    echo "[supervisor] Shutdown complete" >&2
+  }
+  trap '_supervisor_cleanup; exit 130' INT TERM
+
   for ((i = 1; i <= num_instances; i++)); do
     supervisor_worker_loop "${workspace_root}" "${i}" "${max_retries}" "${base_dir}" &
-    local pid=$!
-    worker_pids+=("${pid}")
-    echo "[supervisor] Spawned worker-${i} (PID ${pid})"
+    worker_pids+=("$!")
+    echo "[supervisor] Spawned worker-${i} (PID $!)"
   done
 
-  # Monitor workers and run periodic coordinator checks
+  # Wait for all workers
   local any_failed=0
-  local check_interval=60
-  local last_check=0
-
-  while true; do
-    local all_done=true
-    for pid in "${worker_pids[@]}"; do
-      if kill -0 "${pid}" 2>/dev/null; then
-        all_done=false
-        break
-      fi
-    done
-
-    if [[ "${all_done}" == "true" ]]; then
-      break
-    fi
-
-    # Periodic coordinator check
-    local now
-    now=$(date +%s)
-    if [[ $((now - last_check)) -ge ${check_interval} ]]; then
-      coordinator_run "${workspace_root}" "${base_dir}" 2>/dev/null || true
-      last_check="${now}"
-    fi
-
-    sleep 2
-  done
-
-  # Collect exit codes
   for pid in "${worker_pids[@]}"; do
     if ! wait "${pid}"; then
       any_failed=1
     fi
   done
 
-  # Clean up all worktrees
+  # Clear the trap
+  trap - INT TERM
+
   echo "[supervisor] Cleaning up worktrees..."
   worktree_cleanup_all "${workspace_root}" "${base_dir}" 2>/dev/null || true
 

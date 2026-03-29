@@ -13,7 +13,9 @@ worktree_base_dir() {
   if [[ -n "${custom_dir}" ]]; then
     printf '%s\n' "${custom_dir}"
   else
-    printf '%s\n' "$(cd "${workspace_root}" && cd .. && pwd)/.karl-worktrees"
+    local resolved
+    resolved=$(cd "${workspace_root}" && pwd -P)
+    printf '%s-worktrees\n' "${resolved}"
   fi
 }
 

@@ -56,34 +56,46 @@ REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
   grep -q "<svg" "$REPO_ROOT/docs/architecture.svg"
 }
 
-# ── karl built-in agents (Agents/ in the karl root) ───────────────────────────
+# ── Claude Code subagent definitions (.claude/agents/) ───────────────────────
 
-@test "Agents/planner.md exists" {
-  [ -f "$REPO_ROOT/Agents/planner.md" ]
+@test ".claude/agents/planner.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/planner.md" ]
 }
 
-@test "Agents/reviewer.md exists" {
-  [ -f "$REPO_ROOT/Agents/reviewer.md" ]
+@test ".claude/agents/reviewer.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/reviewer.md" ]
 }
 
-@test "Agents/architect.md exists" {
-  [ -f "$REPO_ROOT/Agents/architect.md" ]
+@test ".claude/agents/architect.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/architect.md" ]
 }
 
-@test "Agents/tester.md exists" {
-  [ -f "$REPO_ROOT/Agents/tester.md" ]
+@test ".claude/agents/tester.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/tester.md" ]
 }
 
-@test "Agents/developer.md exists" {
-  [ -f "$REPO_ROOT/Agents/developer.md" ]
+@test ".claude/agents/developer.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/developer.md" ]
 }
 
-@test "Agents/deployment.md exists" {
-  [ -f "$REPO_ROOT/Agents/deployment.md" ]
+@test ".claude/agents/deployment.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/deployment.md" ]
 }
 
-@test "Agents/tech.md exists" {
-  [ -f "$REPO_ROOT/Agents/tech.md" ]
+@test ".claude/agents/tech.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/tech.md" ]
+}
+
+@test ".claude/agents/coordinator.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/coordinator.md" ]
+}
+
+@test ".claude/agents/team-lead.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/team-lead.md" ]
+}
+
+@test ".claude/agents/splitter.md exists" {
+  [ -f "$REPO_ROOT/.claude/agents/splitter.md" ]
 }
 
 # ── Example workspace – Input/prd.json ────────────────────────────────────────

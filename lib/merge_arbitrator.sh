@@ -91,20 +91,102 @@ _merge_arbitrator_do_merge() {
   local merge_output
   merge_output=$(git -C "${workspace_root}" merge-tree "${merge_base}" main "${branch}" 2>/dev/null) || true
 
-  if printf '%s' "${merge_output}" | grep -q '<<<<<<'; then
-    echo "WARNING: Merge conflicts detected for ${ticket_id} on branch ${branch}" >&2
-    echo "[merge_arbitrator] Conflicts detected — marking ticket as failed" >&2
-    return 1
+  if printf '%s\n' "${merge_output}" | grep -q '<<<<<<'; then
+    echo "[merge_arbitrator] Potential conflicts detected for ${ticket_id} — will attempt resolution" >&2
   fi
 
   # Perform the actual merge on main
   echo "[merge_arbitrator] Merging ${branch} to main for ${ticket_id}..."
-  git -C "${workspace_root}" checkout main > /dev/null 2>&1 || return 1
-  if ! git -C "${workspace_root}" merge "${branch}" -m "feat: [${ticket_id}] merge from worktree" > /dev/null 2>&1; then
-    echo "ERROR: Merge failed for ${ticket_id}" >&2
-    # Abort the merge if it's in a conflicted state
-    git -C "${workspace_root}" merge --abort 2>/dev/null || true
+
+  # Stash dirty workspace state (prd.json modified by ticket claiming)
+  local stashed="false"
+  if ! git -C "${workspace_root}" diff --quiet 2>/dev/null; then
+    git -C "${workspace_root}" stash push -q 2>/dev/null && stashed="true"
+  fi
+
+  if ! git -C "${workspace_root}" checkout main > /dev/null 2>&1; then
+    echo "ERROR: Could not checkout main in ${workspace_root}" >&2
+    [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash pop -q 2>/dev/null || true
     return 1
+  fi
+
+  local merge_err
+  if ! merge_err=$(git -C "${workspace_root}" merge "${branch}" -m "feat: [${ticket_id}] merge from worktree" 2>&1); then
+    # Merge has conflicts — try agent-based resolution
+    echo "[merge_arbitrator] Merge conflicts for ${ticket_id} — invoking merge-resolver agent..." >&2
+
+    # Get list of conflicted files
+    local conflicted_files
+    conflicted_files=$(git -C "${workspace_root}" diff --name-only --diff-filter=U 2>/dev/null || true)
+
+    if [[ -z "${conflicted_files}" ]]; then
+      echo "ERROR: Merge failed for ${ticket_id} (non-conflict error): ${merge_err}" >&2
+      git -C "${workspace_root}" merge --abort 2>/dev/null || true
+      [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash pop -q 2>/dev/null || true
+      return 1
+    fi
+
+    # Get diffs for context
+    local main_diff
+    main_diff=$(git -C "${workspace_root}" diff HEAD 2>/dev/null || true)
+
+    # Invoke the merge-resolver agent to fix conflicts
+    local resolve_prompt
+    resolve_prompt="Resolve the merge conflicts in this repository. The working directory is ${workspace_root}.
+
+Conflicted files:
+${conflicted_files}
+
+Conflict diff:
+${main_diff}
+
+For each conflicted file:
+1. Read the file and find the conflict markers (<<<<<<< ======= >>>>>>>)
+2. Resolve the conflict by combining both sides appropriately
+3. Remove all conflict markers
+4. Stage the resolved file with git add
+
+For Input/prd.json: keep the main branch version (use git checkout --theirs Input/prd.json then git add).
+For Output/progress.md: keep the main branch version.
+
+After resolving ALL conflicts, return your JSON summary."
+
+    local resolve_response
+    if resolve_response=$(cd "${workspace_root}" && subagent_invoke_json "merge-resolver" "${resolve_prompt}" 2>/dev/null); then
+      local resolution
+      resolution=$(printf '%s' "${resolve_response}" | jq -r '.resolution // "unresolvable"' 2>/dev/null) || resolution="unresolvable"
+
+      if [[ "${resolution}" == "resolved" ]]; then
+        # Check if all conflicts are actually resolved (no remaining markers)
+        local remaining_conflicts
+        remaining_conflicts=$(git -C "${workspace_root}" diff --name-only --diff-filter=U 2>/dev/null || true)
+
+        if [[ -z "${remaining_conflicts}" ]]; then
+          echo "[merge_arbitrator] Conflicts resolved by agent for ${ticket_id}" >&2
+          git -C "${workspace_root}" commit -m "feat: [${ticket_id}] merge from worktree (conflicts resolved)" > /dev/null 2>&1
+          # Drop stash and continue to post-merge steps
+          [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash drop -q 2>/dev/null || true
+        else
+          echo "ERROR: Agent claimed resolution but conflicts remain for ${ticket_id}" >&2
+          git -C "${workspace_root}" merge --abort 2>/dev/null || true
+          [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash pop -q 2>/dev/null || true
+          return 1
+        fi
+      else
+        echo "ERROR: Agent could not resolve conflicts for ${ticket_id}" >&2
+        git -C "${workspace_root}" merge --abort 2>/dev/null || true
+        [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash pop -q 2>/dev/null || true
+        return 1
+      fi
+    else
+      echo "ERROR: Merge-resolver agent failed for ${ticket_id}" >&2
+      git -C "${workspace_root}" merge --abort 2>/dev/null || true
+      [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash pop -q 2>/dev/null || true
+      return 1
+    fi
+  else
+    # Clean merge — drop stash
+    [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash drop -q 2>/dev/null || true
   fi
 
   # Update prd.json: mark ticket as complete

@@ -1,7 +1,8 @@
 # ADR-003: Agent Registry Contract
 
 ## Status
-Accepted
+Superseded by [migration-001-subagents-and-agent-teams](migration-001-subagents-and-agent-teams.md) (2026-03-27).
+The custom agent registry was replaced by Claude Code native subagents in `.claude/agents/`.
 
 ## Context
 ADR-001 reserves the `Agents/` directory for agent prompt templates but does not specify the file format, required roles, validation rules, or how prompts are composed with runtime context. Without a documented contract, contributors cannot reliably author new agents, and the loader cannot enforce a stable interface.

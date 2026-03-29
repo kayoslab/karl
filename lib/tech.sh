@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/tech.sh - First-run tech discovery and tech.md generation (US-021)
+# lib/tech.sh - First-run tech discovery and tech.md generation
 
 set -euo pipefail
 
@@ -16,38 +16,6 @@ tech_needed() {
   return 0
 }
 
-# tech_run_agent <agents_dir> <prd_json>
-# Runs the tech agent to generate tech.md content.
-# Prints tech.md content to stdout; returns non-zero on failure.
-tech_run_agent() {
-  local agents_dir="${1:?agents_dir required}"
-  local prd_json="${2:-}"
-
-  local tech_agent_file="${agents_dir}/tech.md"
-  if [[ ! -f "${tech_agent_file}" ]]; then
-    echo "ERROR: tech agent file not found at ${tech_agent_file}" >&2
-    return 1
-  fi
-
-  # Read the tech agent prompt body (strip YAML frontmatter)
-  local prompt
-  prompt=$(awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next} !fm {print}' "${tech_agent_file}")
-
-  # Append PRD context if provided
-  if [[ -n "${prd_json}" ]]; then
-    prompt="${prompt}
-
-## PRD Context
-
-${prd_json}"
-  fi
-
-  local response
-  response=$(printf '%s\n' "${prompt}" | claude_invoke --print --output-format text) || return 1
-
-  printf '%s\n' "${response}"
-}
-
 # tech_persist <workspace_root> <content>
 # Writes tech content to Output/tech.md.
 tech_persist() {
@@ -61,20 +29,14 @@ tech_persist() {
 
 # tech_discover <workspace_root>
 # Runs tech discovery if Output/tech.md is absent or empty.
-# Uses KARL_AGENTS_DIR env var for agents directory (defaults to ${KARL_DIR}/Agents).
-# Skips gracefully if tech agent is not found or agent fails.
+# Uses the tech subagent via Claude Code.
+# Skips gracefully if agent fails.
 # Always returns 0 (non-blocking).
 tech_discover() {
   local workspace_root="${1:?workspace_root required}"
-  local agents_dir="${KARL_AGENTS_DIR:-${KARL_DIR:-}/Agents}"
 
   if ! tech_needed "${workspace_root}"; then
     echo "[tech] tech.md already exists — skipping discovery"
-    return 0
-  fi
-
-  if [[ ! -f "${agents_dir}/tech.md" ]]; then
-    echo "[tech] WARNING: tech agent not found at ${agents_dir}/tech.md — skipping" >&2
     return 0
   fi
 
@@ -85,7 +47,7 @@ tech_discover() {
   fi
 
   local content
-  if ! content=$(cd "${workspace_root}" && tech_run_agent "${agents_dir}" "${prd_json}"); then
+  if ! content=$(cd "${workspace_root}" && claude --agent tech --print --output-format text -p "Generate the technology context markdown document for this project. Output ONLY the markdown starting with '# Technology Context'. No conversation. PRD: ${prd_json}"); then
     echo "[tech] WARNING: tech agent failed — skipping" >&2
     return 0
   fi

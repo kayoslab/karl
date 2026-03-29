@@ -11,7 +11,7 @@ karl's workspace is rooted at the repository root and organised as follows:
 
 ```
 <root>/
-  Agents/          # Agent prompt templates (*.md)
+  .claude/agents/  # Claude Code subagent definitions (*.md) — managed by karl, not the workspace
   Input/
     prd.json       # Canonical ticket backlog (required at runtime)
     CLAUDE.md      # Project instructions read by all agents (required at runtime)
@@ -21,12 +21,14 @@ karl's workspace is rooted at the repository root and organised as follows:
     tech.md        # Living technology context document
   lib/             # Bash source modules (workspace.sh, etc.)
   tests/           # bats-core test suites (*.bats)
-  karl             # Main entrypoint script
+  karl.sh          # Main entrypoint script
   LOCK             # Single-instance protection file (runtime only)
 ```
 
+Note: Agent definitions moved from `Agents/` to `.claude/agents/` as part of the migration to Claude Code native subagents (see migration-001 ADR).
+
 Key rules:
-1. `Agents/`, `Input/`, `Output/`, and `Output/ADR/` are created by `bootstrap_workspace` if absent.
+1. `Input/`, `Output/`, and `Output/ADR/` are created by `bootstrap_workspace` if absent.
 2. `Input/prd.json` and `CLAUDE.md` are **required inputs** validated by `validate_workspace`; startup fails with a clear error if either is missing after bootstrap.
 3. `Output/progress.md` and `Output/tech.md` are **canonical outputs** created as empty placeholders during bootstrap; they are append-safe and must never be truncated by agents.
 4. `Output/ADR/` consolidates all durable runtime artifacts under `Output/` so a single directory captures the full state of a run.

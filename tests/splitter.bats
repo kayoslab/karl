@@ -3,19 +3,19 @@
 
 KARL_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
 SPLITTER_SH="${KARL_DIR}/lib/splitter.sh"
-AGENTS_SH="${KARL_DIR}/lib/agents.sh"
 
 setup() {
   WORKSPACE_ROOT="$(mktemp -d)"
+  STUB_DIR="$(mktemp -d)"
   mkdir -p "${WORKSPACE_ROOT}/Input"
-  # shellcheck source=../lib/agents.sh
-  source "${AGENTS_SH}"
+  # shellcheck source=../lib/subagent.sh
+  source "${KARL_DIR}/lib/subagent.sh"
   # shellcheck source=../lib/splitter.sh
   source "${SPLITTER_SH}"
 }
 
 teardown() {
-  rm -rf "${WORKSPACE_ROOT}"
+  rm -rf "${WORKSPACE_ROOT}" "${STUB_DIR}"
 }
 
 make_prd() {
@@ -234,10 +234,215 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# splitter_run (requires mocked claude_invoke)
+# splitter_run (requires claude CLI stub)
 # ---------------------------------------------------------------------------
 
 @test "splitter_run returns 1 when prd.json is missing" {
   run splitter_run "${WORKSPACE_ROOT}"
   [ "$status" -ne 0 ]
+}
+
+# ---------------------------------------------------------------------------
+# splitter_analyze_deps — dependency updates preserve all tickets
+# ---------------------------------------------------------------------------
+
+@test "splitter_analyze_deps preserves all tickets when adding dependencies" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false},
+  {"id": "US-003", "priority": 3, "passes": false}
+]
+EOF
+
+  # Mock subagent_invoke_json to return dependency updates for US-003 only
+  subagent_invoke_json() {
+    printf '{"dependency_updates": [{"id": "US-003", "add_depends_on": ["US-001"]}]}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  # ALL three tickets must still exist
+  local count
+  count=$(jq 'length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${count}" -eq 3 ]
+
+  local ids
+  ids=$(jq -r '.[].id' "${WORKSPACE_ROOT}/Input/prd.json" | sort | tr '\n' ',')
+  [ "${ids}" = "US-001,US-002,US-003," ]
+}
+
+@test "splitter_analyze_deps preserves tickets with no matching update" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false}
+]
+EOF
+
+  # Update only US-002 — US-001 must survive
+  subagent_invoke_json() {
+    printf '{"dependency_updates": [{"id": "US-002", "add_depends_on": ["US-001"]}]}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  local count
+  count=$(jq 'length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${count}" -eq 2 ]
+
+  # US-001 still exists and has no depends_on
+  local us1_deps
+  us1_deps=$(jq -r '.[] | select(.id == "US-001") | .depends_on // [] | length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${us1_deps}" -eq 0 ]
+}
+
+@test "splitter_analyze_deps adds dependencies correctly" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false, "depends_on": []}
+]
+EOF
+
+  subagent_invoke_json() {
+    printf '{"dependency_updates": [{"id": "US-002", "add_depends_on": ["US-001"]}]}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  local deps
+  deps=$(jq -r '.[] | select(.id == "US-002") | .depends_on[0]' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${deps}" = "US-001" ]
+}
+
+@test "splitter_analyze_deps strips hallucinated non-existent IDs" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false}
+]
+EOF
+
+  # Agent hallucinates a dependency on non-existent US-999
+  subagent_invoke_json() {
+    printf '{"dependency_updates": [{"id": "US-002", "add_depends_on": ["US-999"]}]}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  # US-999 should be stripped
+  local dep_count
+  dep_count=$(jq '.[] | select(.id == "US-002") | .depends_on | length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${dep_count}" -eq 0 ]
+}
+
+@test "splitter_analyze_deps handles empty dependency_updates" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false}
+]
+EOF
+
+  subagent_invoke_json() {
+    printf '{"dependency_updates": []}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  local count
+  count=$(jq 'length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${count}" -eq 2 ]
+}
+
+@test "splitter_analyze_deps preserves existing depends_on when adding new ones" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false},
+  {"id": "US-003", "priority": 3, "passes": false, "depends_on": ["US-001"]}
+]
+EOF
+
+  subagent_invoke_json() {
+    printf '{"dependency_updates": [{"id": "US-003", "add_depends_on": ["US-002"]}]}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  local deps
+  deps=$(jq -r '.[] | select(.id == "US-003") | .depends_on | sort | join(",")' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${deps}" = "US-001,US-002" ]
+}
+
+@test "splitter_analyze_deps works with userStories format" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+{
+  "userStories": [
+    {"id": "US-001", "priority": 1, "passes": false},
+    {"id": "US-002", "priority": 2, "passes": false}
+  ]
+}
+EOF
+
+  subagent_invoke_json() {
+    printf '{"dependency_updates": [{"id": "US-002", "add_depends_on": ["US-001"]}]}'
+  }
+
+  splitter_analyze_deps "${WORKSPACE_ROOT}"
+
+  local count
+  count=$(jq '.userStories | length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${count}" -eq 2 ]
+
+  local deps
+  deps=$(jq -r '.userStories[] | select(.id == "US-002") | .depends_on[0]' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${deps}" = "US-001" ]
+}
+
+@test "splitter_analyze_deps succeeds when agent fails (non-fatal)" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false}
+]
+EOF
+
+  subagent_invoke_json() { return 1; }
+
+  # Should still succeed (agent failure is non-fatal, validation still runs)
+  run splitter_analyze_deps "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+
+  # Ticket must still exist
+  local count
+  count=$(jq 'length' "${WORKSPACE_ROOT}/Input/prd.json")
+  [ "${count}" -eq 1 ]
+}
+
+# ---------------------------------------------------------------------------
+# splitter_apply_decisions — split must preserve non-split tickets
+# ---------------------------------------------------------------------------
+
+@test "splitter_apply_decisions preserves all non-split tickets" {
+  make_prd "${WORKSPACE_ROOT}/Input/prd.json" <<'EOF'
+[
+  {"id": "US-001", "priority": 1, "passes": false},
+  {"id": "US-002", "priority": 2, "passes": false},
+  {"id": "US-003", "priority": 3, "passes": false}
+]
+EOF
+
+  # Only split US-002, keep US-001 and US-003
+  local decisions='{"split_decisions":[{"parent_id":"US-002","action":"split","reason":"test","sub_tickets":[{"id":"US-002.1","title":"Part A","priority":2,"passes":false,"status":"available","depends_on":[],"split_from":"US-002"}]},{"parent_id":"US-001","action":"keep","reason":"simple"},{"parent_id":"US-003","action":"keep","reason":"simple"}]}'
+
+  splitter_apply_decisions "${WORKSPACE_ROOT}/Input/prd.json" "${decisions}"
+
+  # US-001 and US-003 must survive, US-002 replaced by US-002.1
+  local ids
+  ids=$(jq -r '.[].id' "${WORKSPACE_ROOT}/Input/prd.json" | sort | tr '\n' ',')
+  [[ "${ids}" == *"US-001"* ]]
+  [[ "${ids}" == *"US-002.1"* ]]
+  [[ "${ids}" == *"US-003"* ]]
+  [[ "${ids}" != *"US-002,"* ]]
 }

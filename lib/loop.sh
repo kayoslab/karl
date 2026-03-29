@@ -4,8 +4,8 @@
 set -euo pipefail
 
 # loop_run_ticket <workspace_root> <story_json> <branch> [max_retries] [skip_finalize]
-# Runs the full agent pipeline for a single ticket on the current feature branch.
-# When skip_finalize is "true", stops after the deployment gate (caller handles merge).
+# Runs the full agent pipeline for a single ticket via subagents.
+# When skip_finalize is "true", stops after the pipeline (caller handles merge).
 # Returns 0 on success (ticket complete), 1 on failure.
 loop_run_ticket() {
   local workspace_root="${1:?workspace_root required}"
@@ -17,41 +17,34 @@ loop_run_ticket() {
   local story_id
   story_id=$(printf '%s' "${story_json}" | jq -r '.id // "unknown"')
 
-  local agents_dir="${KARL_DIR}/Agents"
-
-  # Read tech context (may be empty on first run; tech_discover will create it)
   local tech=""
-  if [[ -f "${workspace_root}/Output/tech.md" ]]; then
-    tech=$(cat "${workspace_root}/Output/tech.md")
-  fi
+  [[ -f "${workspace_root}/Output/tech.md" ]] && tech=$(cat "${workspace_root}/Output/tech.md")
 
   # --- Planning ---
   echo "[loop] Running planning for ${story_id}..."
-  if ! planning_run_loop "${agents_dir}" "${workspace_root}" "${story_json}" "${tech}"; then
+  if ! planning_run_loop "${workspace_root}" "${story_json}" "${tech}"; then
     echo "ERROR: Planning failed for ${story_id}" >&2
     return 1
   fi
 
   local plan_json=""
-  if [[ -f "${workspace_root}/Output/${story_id}/plan.json" ]]; then
-    plan_json=$(cat "${workspace_root}/Output/${story_id}/plan.json")
-  fi
+  [[ -f "${workspace_root}/Output/${story_id}/plan.json" ]] && plan_json=$(cat "${workspace_root}/Output/${story_id}/plan.json")
 
   # --- Architecture ---
   echo "[loop] Running architect for ${story_id}..."
-  if ! architect_run "${agents_dir}" "${workspace_root}" "${story_json}" "${plan_json}"; then
+  if ! architect_run "${workspace_root}" "${story_json}" "${plan_json}"; then
     echo "ERROR: Architect failed for ${story_id}" >&2
     return 1
   fi
 
   # --- Test generation ---
   echo "[loop] Generating tests for ${story_id}..."
-  if ! tester_generate "${agents_dir}" "${workspace_root}" "${story_json}" "${plan_json}" "${tech}"; then
+  if ! tester_generate "${workspace_root}" "${story_json}" "${plan_json}" "${tech}"; then
     echo "ERROR: Test generation failed for ${story_id}" >&2
     return 1
   fi
 
-  # --- Rework loop (developer ↔ tester) ---
+  # --- Rework loop (developer + tester) ---
   echo "[loop] Starting rework loop for ${story_id}..."
   if ! rework_loop "${workspace_root}" "${story_id}" "${story_json}" "${max_retries}"; then
     echo "ERROR: Rework loop exhausted for ${story_id}" >&2
@@ -60,12 +53,12 @@ loop_run_ticket() {
 
   # --- Deployment gate ---
   echo "[loop] Running deployment gate for ${story_id}..."
-  if ! deploy_gate "${agents_dir}" "${workspace_root}" "${story_json}" "${plan_json}" "${tech}"; then
+  if ! deploy_gate "${workspace_root}" "${story_json}" "${plan_json}" "${tech}"; then
     echo "ERROR: Deployment gate failed for ${story_id}" >&2
     return 1
   fi
 
-  # --- Commit any outstanding changes before merge ---
+  # --- Commit outstanding changes ---
   if git -C "${workspace_root}" rev-parse --git-dir > /dev/null 2>&1; then
     if ! git -C "${workspace_root}" diff --quiet 2>/dev/null || \
        ! git -C "${workspace_root}" diff --cached --quiet 2>/dev/null; then
@@ -76,7 +69,7 @@ loop_run_ticket() {
     fi
   fi
 
-  # In worktree mode, the supervisor handles merge via merge_arbitrator_merge
+  # In worktree mode, the supervisor handles merge
   if [[ "${skip_finalize}" == "true" ]]; then
     echo "[loop] Ticket ${story_id} pipeline complete (merge deferred to supervisor)"
     return 0
@@ -89,7 +82,7 @@ loop_run_ticket() {
     return 1
   fi
 
-  # --- Finalize: merge to main, mark passes=true, update progress ---
+  # --- Finalize ---
   echo "[loop] Finalizing ${story_id}..."
   local summary
   summary=$(printf '%s' "${story_json}" | jq -r '.title // "completed"')
@@ -103,10 +96,6 @@ loop_run_ticket() {
 }
 
 # loop_run_iteration <workspace_root> [max_retries]
-# Selects the next unfinished story and runs it.
-# Returns 0 if a story was selected and processed.
-# Returns 2 if all stories are complete (clean exit).
-# Returns 1 on error.
 loop_run_iteration() {
   local workspace_root="${1:?workspace_root required}"
   local max_retries="${2:-10}"
@@ -118,10 +107,7 @@ loop_run_iteration() {
     echo "karl: all stories complete — nothing left to do"
     return 2
   fi
-
-  if [[ "${rc}" -ne 0 ]]; then
-    return 1
-  fi
+  [[ "${rc}" -ne 0 ]] && return 1
 
   local story_id story_title branch
   story_id=$(printf '%s' "${story}" | jq -r '.id // "unknown"')
@@ -145,8 +131,6 @@ loop_run_iteration() {
 }
 
 # loop_run <workspace_root> [max_retries]
-# Runs the ticket loop until all stories are complete or an error occurs.
-# Exits cleanly (return 0) when all stories pass.
 loop_run() {
   local workspace_root="${1:?workspace_root required}"
   local max_retries="${2:-10}"
@@ -154,13 +138,7 @@ loop_run() {
   while true; do
     local rc=0
     loop_run_iteration "${workspace_root}" "${max_retries}" || rc=$?
-
-    if [[ "${rc}" -eq 2 ]]; then
-      return 0
-    fi
-
-    if [[ "${rc}" -ne 0 ]]; then
-      return 1
-    fi
+    [[ "${rc}" -eq 2 ]] && return 0
+    [[ "${rc}" -ne 0 ]] && return 1
   done
 }

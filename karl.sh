@@ -5,12 +5,6 @@ set -euo pipefail
 
 KARL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=lib/claude.sh
-source "${KARL_DIR}/lib/claude.sh"
-# shellcheck source=lib/rate_limit.sh
-source "${KARL_DIR}/lib/rate_limit.sh"
-# shellcheck source=lib/agents.sh
-source "${KARL_DIR}/lib/agents.sh"
 # shellcheck source=lib/workspace.sh
 source "${KARL_DIR}/lib/workspace.sh"
 # shellcheck source=lib/lock.sh
@@ -23,10 +17,8 @@ source "${KARL_DIR}/lib/branch.sh"
 source "${KARL_DIR}/lib/prd.sh"
 # shellcheck source=lib/retry.sh
 source "${KARL_DIR}/lib/retry.sh"
-# shellcheck source=lib/artifacts.sh
-source "${KARL_DIR}/lib/artifacts.sh"
-# shellcheck source=lib/summarize.sh
-source "${KARL_DIR}/lib/summarize.sh"
+# shellcheck source=lib/subagent.sh
+source "${KARL_DIR}/lib/subagent.sh"
 # shellcheck source=lib/tech.sh
 source "${KARL_DIR}/lib/tech.sh"
 # shellcheck source=lib/planning.sh
@@ -55,8 +47,6 @@ source "${KARL_DIR}/lib/prd_claim.sh"
 source "${KARL_DIR}/lib/worktree.sh"
 # shellcheck source=lib/splitter.sh
 source "${KARL_DIR}/lib/splitter.sh"
-# shellcheck source=lib/coordinator.sh
-source "${KARL_DIR}/lib/coordinator.sh"
 # shellcheck source=lib/merge_arbitrator.sh
 source "${KARL_DIR}/lib/merge_arbitrator.sh"
 # shellcheck source=lib/supervisor.sh
@@ -72,6 +62,7 @@ FORCE="false"
 SPLIT="false"
 NUM_INSTANCES=1
 WORKTREE_DIR=""
+export KARL_VERBOSE="false"
 
 usage() {
   echo "Usage: $(basename "$0") [OPTIONS]" >&2
@@ -83,8 +74,9 @@ usage() {
   echo "  --clean                Reset repository to a clean baseline for recovery" >&2
   echo "  --force                With --clean: also discard uncommitted changes" >&2
   echo "  --split                Run splitter agent on prd.json before the loop" >&2
-  echo "  --instances <n>        Run N parallel workers via git worktrees (default: 1)" >&2
-  echo "  --worktree-dir <path>  Base directory for worktrees (default: ../.karl-worktrees)" >&2
+  echo "  --instances <n>        Run N parallel workers via agent teams (default: 1)" >&2
+  echo "  --worktree-dir <path>  Base directory for worktrees (default: <workspace>-worktrees)" >&2
+  echo "  --verbose              Show full agent output (default: concise status only)" >&2
 }
 
 parse_args() {
@@ -160,6 +152,11 @@ parse_args() {
         WORKTREE_DIR="${2}"
         shift 2
         ;;
+      --verbose)
+        KARL_VERBOSE="true"
+        export KARL_VERBOSE
+        shift
+        ;;
       -h|--help)
         usage
         exit 0
@@ -185,7 +182,10 @@ main() {
     exit 0
   fi
 
-  if ! claude_validate; then
+  # Validate Claude CLI is installed
+  if ! command -v claude &> /dev/null; then
+    echo "ERROR: Claude CLI is not installed or not in PATH" >&2
+    echo "Install it from: https://docs.anthropic.com/claude/docs/claude-cli" >&2
     exit 1
   fi
 
@@ -195,8 +195,7 @@ main() {
     exit 1
   fi
 
-  # Ensure workspace baseline (Input/, CLAUDE.md, Output/) is committed to the
-  # current branch so that switching to main never loses these files.
+  # Ensure workspace baseline is committed
   if git -C "${WORKSPACE_ROOT}" rev-parse --git-dir > /dev/null 2>&1; then
     git -C "${WORKSPACE_ROOT}" add -A > /dev/null 2>&1 || true
     git -C "${WORKSPACE_ROOT}" diff --cached --quiet 2>/dev/null || \
@@ -223,24 +222,6 @@ main() {
     exit 0
   fi
 
-  # Validate splitter agent if --split is requested
-  if [[ "${SPLIT}" == "true" ]]; then
-    local agents_dir="${KARL_DIR}/Agents"
-    if ! agents_validate_extra "${agents_dir}" "${AGENTS_SPLITTER_ROLE}"; then
-      echo "ERROR: Splitter agent validation failed" >&2
-      exit 1
-    fi
-  fi
-
-  # Validate multi-instance agents if --instances > 1
-  if [[ "${NUM_INSTANCES}" -gt 1 ]]; then
-    local agents_dir="${KARL_DIR}/Agents"
-    if ! agents_validate_extra "${agents_dir}" "${AGENTS_MULTI_ROLES[@]}"; then
-      echo "ERROR: Multi-instance agent validation failed" >&2
-      exit 1
-    fi
-  fi
-
   # Run splitter before the main loop if requested
   if [[ "${SPLIT}" == "true" ]]; then
     echo "karl: running splitter agent..."
@@ -250,27 +231,33 @@ main() {
     fi
   fi
 
+  # Always analyze and validate dependencies (even without --split)
+  echo "karl: analyzing dependencies..."
+  if ! splitter_analyze_deps "${WORKSPACE_ROOT}"; then
+    echo "ERROR: Dependency analysis failed" >&2
+    exit 1
+  fi
+
   if ! lock_acquire "${WORKSPACE_ROOT}" "${FORCE_LOCK}"; then
     exit 1
   fi
 
-  trap 'lock_release "${WORKSPACE_ROOT}"' EXIT
+  trap 'pkill -P $$ 2>/dev/null || true; lock_release "${WORKSPACE_ROOT}"' EXIT INT TERM
 
   echo "karl: workspace ready, lock acquired (PID $$) [max-retries=${MAX_RETRIES}]"
 
-  # Clean up stale PRD lock from a previous crash (safe: we hold the main LOCK
-  # and no workers are running yet)
+  # Clean up stale PRD lock from a previous crash
   _prd_lock_release "${WORKSPACE_ROOT}"
 
   # Recover from a previous crash/failure: reset in_progress and failed tickets
   prd_reset_in_progress "${WORKSPACE_ROOT}"
   prd_reset_failed "${WORKSPACE_ROOT}"
 
-  # Run tech discovery once before the main loop (creates Output/tech.md if missing)
+  # Run tech discovery once before the main loop
   tech_discover "${WORKSPACE_ROOT}"
 
   if [[ "${NUM_INSTANCES}" -gt 1 ]]; then
-    echo "karl: multi-instance mode with ${NUM_INSTANCES} workers"
+    echo "karl: multi-instance mode with ${NUM_INSTANCES} workers (agent teams)"
     supervisor_run "${WORKSPACE_ROOT}" "${NUM_INSTANCES}" "${MAX_RETRIES}" "${WORKTREE_DIR}"
   else
     loop_run "${WORKSPACE_ROOT}" "${MAX_RETRIES}"

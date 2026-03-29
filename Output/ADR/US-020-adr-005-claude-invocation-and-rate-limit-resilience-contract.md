@@ -1,7 +1,8 @@
 # ADR-005: Claude Invocation and Rate-Limit Resilience Contract
 
 ## Status
-Accepted
+Superseded by [migration-001-subagents-and-agent-teams](migration-001-subagents-and-agent-teams.md) (2026-03-27).
+The `claude_invoke()` wrapper was replaced by direct `claude --agent` subagent invocations.
 
 ## Context
 The autonomous loop calls the Claude CLI from multiple agent libs (planning, architect, tester, rework, deploy, tech). Without a centralised invocation wrapper, rate-limit responses from the Claude API would surface as unhandled errors, aborting the loop. A consistent retry strategy is required so the loop can run unattended for extended periods.

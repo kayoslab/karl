@@ -67,7 +67,11 @@ Completed [US-023]: Add karl clean command for repository recovery. All gates pa
 
 ## 2026-03-25 08:53 - US-024 - Provide open-source onboarding: example workspace, README, and visual project overview
 Completed [US-024]: Provide open-source onboarding: example workspace, README, and visual project overview. All gates passed.
-## US-027: Reduce logging and add parameter to enable verbose mode
+## 2026-03-26 - US-027 - Reduce logging and add parameter to enable verbose mode
+Completed [US-027]: Added --verbose flag. Default output shows concise status lines; --verbose shows full subagent output.
 
-## US-030: Implement a multi instance version of karl that supports multiple concurrent loops with isolated state
+## 2026-03-26 - US-030 - Implement a multi instance version of karl
+Completed [US-030]: Multi-instance mode via --instances N. Bash supervisor spawns parallel workers in git worktrees with atomic ticket claiming, merge arbitration, and signal propagation.
 
+## 2026-03-27 - Migration to Claude Code subagents
+Migrated agent invocation from custom bash orchestration (agents.sh, claude_invoke, rate_limit.sh) to Claude Code native subagents (.claude/agents/). Bash still orchestrates the pipeline; each stage invokes its subagent via subagent_invoke_json. Added dependency analysis on every startup, signal propagation for clean shutdown, and --verbose flag.

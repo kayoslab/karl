@@ -32,7 +32,7 @@ teardown() {
 @test "worktree_base_dir returns default path when no custom dir given" {
   local result
   result=$(worktree_base_dir "${WORKSPACE_ROOT}")
-  [[ "${result}" == *".karl-worktrees" ]]
+  [[ "${result}" == *"-worktrees" ]]
 }
 
 @test "worktree_base_dir returns custom dir when provided" {

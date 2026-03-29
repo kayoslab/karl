@@ -41,29 +41,35 @@ You have been warned. Let's go.
 
 ![karl multi-agent loop](docs/architecture.svg)
 
-Each ticket runs through a deterministic pipeline. Think of it as a very expensive assembly line:
+Bash orchestrates the pipeline. Each stage invokes a [Claude Code subagent](https://code.claude.com/docs/en/sub-agents) in headless mode — the subagent does the AI work (planning, reviewing, writing code, running tests), then bash picks up the result and moves to the next stage:
 
 ```
-Input/prd.json -> Planner -> Reviewer -> Architect -> Tester -> Developer -> Deployment -> Merge -> main
-                                                                 |____ rework loop ____|
+Input/prd.json -> bash loop:
+  planning.sh   -> subagent: planner + reviewer (approval loop)
+  architect.sh  -> subagent: architect (ADR check)
+  tester.sh     -> subagent: tester (test generation)
+  rework.sh     -> subagent: developer + tester (rework loop)
+  deploy.sh     -> subagent: deployment (quality gates)
+  commit.sh     -> merge to main
 ```
 
-The rework loop is where most of your money goes. Tester generates failing tests first, then after each Developer attempt, Tester verifies. On implementation failure, Developer retries. On test failure, Tester self-corrects its own test and re-verifies. This can go back and forth up to `--max-retries` times per ticket. Each round is a fresh Claude invocation. Cha-ching.
+The rework loop is where most of your money goes. Tester generates failing tests first, then after each Developer attempt, Tester verifies. On implementation failure, Developer retries. On test failure, Tester self-corrects its own test and re-verifies. This can go back and forth up to `--max-retries` times per ticket. Each subagent invocation runs in its own context window with `--dangerously-skip-permissions` so agents can actually write code. Cha-ching.
 
 ### Multi-Instance Mode (`--instances N`) — Experimental
 
 > **Here be dragons.** Multi-instance mode works for many workflows but is experimental. Complex dependency graphs, concurrent merge conflicts, and agent failures can leave things in unexpected states. It also multiplies your API spend by the number of workers. You wanted fast? Fast costs money.
 
-When N > 1, karl spawns parallel workers, each in its own git worktree:
+When N > 1, karl spawns parallel bash workers, each in its own git worktree:
 
 ```
-karl.sh -> [splitter_run] -> supervisor_run
-  +- worker 1: claim -> worktree_create -> loop_run_ticket -> merge_arbitrator_merge -> cleanup
-  +- worker 2: claim -> worktree_create -> loop_run_ticket -> merge_arbitrator_merge -> cleanup
-  +- coordinator: periodic overlap check across active worktrees
+karl.sh -> [splitter] -> [dependency analysis] -> supervisor:
+  +- worker 1: claim ticket -> worktree -> full pipeline -> merge
+  +- worker 2: claim ticket -> worktree -> full pipeline -> merge
+  +- worker 3: claim ticket -> worktree -> full pipeline -> merge
+  -> merge_arbitrator serializes merges to main
 ```
 
-Each worker atomically **claims** a ticket (via `mkdir`-based POSIX locks on `prd.json`), creates an isolated git worktree, runs the full agent pipeline, then acquires a **merge lock** to serialize the merge into main. If a worker fails, the ticket is released back to `"available"` for retry. After `--max-retries` failures for the same ticket, it is marked `"fail"` — but will be reset to `"available"` on the next karl startup, because karl is nothing if not optimistic.
+Each worker atomically claims a ticket via `mkdir`-based POSIX locks, creates an isolated git worktree, runs the full subagent pipeline, then serializes the merge to main through a merge arbitrator. If a ticket fails, it's released for retry. After `--max-retries` failures, it's marked `"fail"` — but will be reset to `"available"` on the next karl startup, because karl is nothing if not optimistic.
 
 ---
 
@@ -158,47 +164,46 @@ karl is configured exclusively via command-line parameters. No config files, no 
 | `--dry-run` | off | Validate setup and show next ticket without spending money |
 | `--split` | off | Run splitter agent on prd.json before the loop |
 | `--instances <n>` | `1` | Run N parallel workers (experimental, expensive) |
-| `--worktree-dir <path>` | `../.karl-worktrees` | Base directory for worktrees |
+| `--worktree-dir <path>` | `<workspace>-worktrees` | Base directory for worktrees |
+| `--verbose` | off | Show full subagent output (default: concise status only) |
 
 ---
 
 ## Folder Structure
 
-Agents are **part of karl** and live alongside `karl.sh`. Your workspace only needs the project inputs:
+Agents are native Claude Code subagents defined in `.claude/agents/`. Your workspace only needs the project inputs:
 
 ```
-karl/                    # karl installation
-+-- karl.sh
-+-- Agents/              # Built-in agent prompt files (one per role)
-|   +-- planner.md
-|   +-- reviewer.md
-|   +-- architect.md
-|   +-- tester.md
-|   +-- developer.md
-|   +-- deployment.md
-|   +-- tech.md
-|   +-- splitter.md          # Ticket splitting (--split)
-|   +-- coordinator.md       # Overlap detection (--instances > 1)
-|   +-- merge_arbitrator.md  # Conflict resolution (--instances > 1)
-+-- lib/
+karl/                        # karl installation
++-- karl.sh                  # Entry point
++-- .claude/agents/          # Claude Code subagent definitions
+|   +-- planner.md           #   Plan generation
+|   +-- reviewer.md          #   Plan review / approval
+|   +-- architect.md         #   ADR maintenance
+|   +-- tester.md            #   Test-first test generation
+|   +-- developer.md         #   Implementation
+|   +-- deployment.md        #   Quality gate
+|   +-- splitter.md          #   Ticket splitting + dependency analysis
+|   +-- tech.md              #   First-run tech discovery
++-- lib/                     # Bash orchestration + domain logic
 
-workspace/               # Your project (pointed to via --workspace)
+workspace/                   # Your project (pointed to via --workspace)
 +-- Input/
-|   +-- prd.json         # Product requirements (array of tickets)
+|   +-- prd.json             # Product requirements (array of tickets)
 +-- Output/
-|   +-- ADR/             # Architecture Decision Records
-|   +-- progress.md      # Completed ticket log
-|   +-- tech.md          # Auto-generated technology summary
-+-- CLAUDE.md            # Project context injected into every agent
+|   +-- ADR/                 # Architecture Decision Records
+|   +-- progress.md          # Completed ticket log
+|   +-- tech.md              # Auto-generated technology summary
++-- CLAUDE.md                # Project context injected into every agent
 ```
 
 ---
 
 ## Agents
 
-Each agent is a markdown file with a YAML frontmatter block defining its role, inputs, outputs, and constraints. karl fills in `{{placeholder}}` variables before invoking Claude CLI. Think of them as very expensive employees who forget everything between tasks but always follow their job description to the letter.
+Agents are native [Claude Code subagents](https://code.claude.com/docs/en/sub-agents) defined in `.claude/agents/`. Each is a markdown file with YAML frontmatter specifying its name, description, allowed tools, and model. Claude Code handles discovery, invocation, and context management — karl just tells it which agent to run and with what prompt. Think of them as very expensive employees who forget everything between tasks but always follow their job description to the letter.
 
-### Core Agents (always active)
+### Pipeline Agents
 
 | Agent | Role |
 |-------|------|
@@ -207,22 +212,24 @@ Each agent is a markdown file with a YAML frontmatter block defining its role, i
 | **architect** | Makes architectural decisions and writes ADR records |
 | **tester** | Writes failing tests that define the acceptance criteria |
 | **developer** | Implements the ticket to make the tests pass |
-| **deployment** | Runs build/lint/test commands, validates the implementation, and updates README/docs |
+| **deployment** | Runs build/lint/test commands and validates the implementation |
 | **tech** | Discovers the technology stack once on first boot |
 
-### Supervisory Agents (multi-instance)
+### Support Agents
 
 | Agent | Activation | Role |
 |-------|------------|------|
-| **splitter** | `--split` | Splits complex tickets into parallelizable sub-tickets with cross-story dependency tracking and DAG validation |
-| **coordinator** | `--instances > 1` | Detects file overlap between concurrent workers and decides whether to pause, continue, or reorder |
-| **merge_arbitrator** | `--instances > 1` | Resolves merge conflicts when a worker's branch conflicts with main |
+| **splitter** | `--split` / always (dep analysis) | Splits complex tickets and analyzes missing dependencies with DAG validation |
+
+### Unused Subagent Definitions
+
+The `.claude/agents/` directory also contains **coordinator** and **team-lead** subagent definitions. These were designed to orchestrate the pipeline and multi-instance mode via Claude Code's `Agent()` tool and agent teams, but `Agent()` is not available in headless `--print` mode. Bash handles orchestration instead. The definitions remain for potential future use in interactive mode.
 
 ### Customising agents
 
-To modify agent behaviour, edit the corresponding file in `karl/Agents/`. The frontmatter `constraints` field is enforced by karl's output parser. Add new instructions in the `## Responsibilities` section.
+To modify agent behaviour, edit the corresponding file in `.claude/agents/`. The frontmatter fields (`tools`, `model`, `description`) are standard Claude Code subagent configuration.
 
-To add a new agent role, create `karl/Agents/myrole.md` with the standard frontmatter format and register it in `lib/agents.sh`. Congratulations, you just hired another employee that costs money every time it thinks.
+To add a new agent role, create `.claude/agents/myrole.md` with the standard frontmatter format. Claude Code discovers it automatically — no registration step needed. Congratulations, you just hired another employee that costs money every time it thinks.
 
 ---
 
@@ -293,6 +300,16 @@ karl is surprisingly resilient for a bash script written by an AI. On each start
 
 This means you can always re-run karl to retry previously failed work without manually editing `prd.json`. Just run it again and open your wallet.
 
+### Dependency analysis
+
+On every startup, karl asks the splitter agent to analyze your stories for missing dependencies — even without `--split`. If US-003 logically depends on US-001 but your PRD doesn't say so, the agent catches it and adds the `depends_on` entry. This runs before any work starts and includes:
+
+- Analysis of implicit dependencies between stories (e.g., "render towers" depends on "project scaffold")
+- Validation that all `depends_on` references point to existing ticket IDs (catches hallucinated references)
+- Cycle detection via topological sort (no circular dependencies allowed)
+
+The agent can only add dependencies between tickets that actually exist in your PRD. Any hallucinated ticket IDs are stripped before writing.
+
 ### Deadlock detection
 
 When running with `--instances`, workers wait if no tickets are selectable but some are still `"in_progress"` (another worker may unblock them). However, if no tickets are selectable **and** none are in progress — for example, when all remaining available tickets depend on permanently failed ones — karl detects the deadlock and exits cleanly instead of spinning forever. This is one of the few situations where karl actually stops spending your money voluntarily.
@@ -314,7 +331,8 @@ Options:
   --force                  Used with --clean: also discard uncommitted changes
   --split                  Run splitter agent on prd.json before the loop
   --instances <n>          Run N parallel workers via git worktrees (default: 1)
-  --worktree-dir <path>    Base directory for worktrees (default: ../.karl-worktrees)
+  --worktree-dir <path>    Base directory for worktrees (default: <workspace>-worktrees)
+  --verbose                Show full subagent output (default: concise status only)
   --help                   Show this help message
 ```
 
@@ -378,7 +396,7 @@ Contributions are welcome. karl is intentionally simple — please keep that spi
 - **No dependencies beyond bash, git, jq, and the Claude CLI.** karl is intentionally dependency-light so it runs anywhere.
 - **Tests are mandatory.** Every new function in `lib/` should have corresponding tests in `tests/`.
 - **shellcheck is non-negotiable.** All shell scripts must pass `shellcheck` with zero warnings.
-- **Keep agents modular.** New agent roles belong in `Agents/` as a markdown file, not baked into shell logic.
+- **Keep agents modular.** New agent roles belong in `.claude/agents/` as a Claude Code subagent definition, not baked into shell logic.
 - **ADR for architecture decisions.** If your change introduces a significant technical decision, add an ADR under `Output/ADR/`.
 
 ### Reporting issues

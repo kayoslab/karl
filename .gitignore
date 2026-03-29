@@ -5,7 +5,7 @@ LOCK
 .karl-worktrees/
 
 # Claude Code local settings
-.claude/
+.claude/settings.local.json
 
 # macOS
 .DS_Store
