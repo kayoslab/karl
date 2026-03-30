@@ -214,7 +214,7 @@ _add_feature_branch() {
   _add_feature_branch "feature/US-016-commit-and-merge"
   commit_finalize "${WORKSPACE_ROOT}" "${TICKET_ID}" \
     "feature/US-016-commit-and-merge" "Commit, merge, and update PRD"
-  log=$(git -C "${WORKSPACE_ROOT}" log --format=%s main | head -1)
+  log=$(git -C "${WORKSPACE_ROOT}" log -1 --format=%s main)
   [[ "${log}" == *"${TICKET_ID}"* ]] || [[ "${log}" == *"Commit"* ]]
 }
 
