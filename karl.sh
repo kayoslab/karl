@@ -49,6 +49,8 @@ source "${KARL_DIR}/lib/worktree.sh"
 source "${KARL_DIR}/lib/splitter.sh"
 # shellcheck source=lib/merge_arbitrator.sh
 source "${KARL_DIR}/lib/merge_arbitrator.sh"
+# shellcheck source=lib/adr_arbitrator.sh
+source "${KARL_DIR}/lib/adr_arbitrator.sh"
 # shellcheck source=lib/supervisor.sh
 source "${KARL_DIR}/lib/supervisor.sh"
 

@@ -3,9 +3,11 @@
 
 set -euo pipefail
 
-# loop_run_ticket <workspace_root> <story_json> <branch> [max_retries] [skip_finalize]
+# loop_run_ticket <workspace_root> <story_json> <branch> [max_retries] [skip_finalize] [main_repo_root]
 # Runs the full agent pipeline for a single ticket via subagents.
 # When skip_finalize is "true", stops after the pipeline (caller handles merge).
+# When main_repo_root is set and differs from workspace_root (worktree mode),
+# the architect phase uses adr_arbitrator_run for synchronized ADR access.
 # Returns 0 on success (ticket complete), 1 on failure.
 loop_run_ticket() {
   local workspace_root="${1:?workspace_root required}"
@@ -13,6 +15,7 @@ loop_run_ticket() {
   local branch="${3:?branch required}"
   local max_retries="${4:-10}"
   local skip_finalize="${5:-false}"
+  local main_repo_root="${6:-}"
 
   local story_id
   story_id=$(printf '%s' "${story_json}" | jq -r '.id // "unknown"')
@@ -32,9 +35,18 @@ loop_run_ticket() {
 
   # --- Architecture ---
   echo "[loop] Running architect for ${story_id}..."
-  if ! architect_run "${workspace_root}" "${story_json}" "${plan_json}"; then
-    echo "ERROR: Architect failed for ${story_id}" >&2
-    return 1
+  if [[ -n "${main_repo_root}" && "${main_repo_root}" != "${workspace_root}" ]]; then
+    # Multi-instance: serialized ADR access via arbitrator
+    if ! adr_arbitrator_run "${main_repo_root}" "${workspace_root}" "${story_json}" "${plan_json}"; then
+      echo "ERROR: Architect failed for ${story_id}" >&2
+      return 1
+    fi
+  else
+    # Single-instance: direct architect call (no locking needed)
+    if ! architect_run "${workspace_root}" "${story_json}" "${plan_json}"; then
+      echo "ERROR: Architect failed for ${story_id}" >&2
+      return 1
+    fi
   fi
 
   # --- Test generation ---

@@ -71,6 +71,29 @@ karl.sh -> [splitter] -> [dependency analysis] -> supervisor:
 
 Each worker atomically claims a ticket via `mkdir`-based POSIX locks, creates an isolated git worktree, runs the full subagent pipeline, then serializes the merge to main through a merge arbitrator. If a ticket fails, it's released for retry. After `--max-retries` failures, it's marked `"fail"` — but will be reset to `"available"` on the next karl startup, because karl is nothing if not optimistic.
 
+#### ADR Arbitrator
+
+Architectural Decision Records (ADRs) are a special case in multi-instance mode. Each worktree is branched from main at creation time, so an ADR created by worker 1 is invisible to worker 2's architect — they read from their own worktree, not from main. Left unchecked, this leads to contradictory or redundant architectural decisions.
+
+The **ADR arbitrator** solves this by serializing the architect phase across all workers:
+
+```
+Worker A hits architect phase -> acquires .adr.lockdir
+  +- Syncs latest ADRs from main into worktree (git ls-tree + git show)
+  +- Runs architect subagent (now sees all prior ADRs)
+  +- If new ADR created: fast-tracks it to main via git plumbing
+  +- Releases .adr.lockdir
+
+Worker B hits architect phase -> acquires .adr.lockdir
+  +- Syncs from main (now sees Worker A's ADR)
+  +- Runs architect subagent with full context
+  +- ...
+```
+
+The fast-track uses git plumbing commands (`hash-object`, `read-tree`, `write-tree`, `commit-tree`, `update-ref`) to commit the ADR directly to `refs/heads/main` without checking out main — which would be unsafe while worktrees are active. This means ADRs propagate to main immediately rather than waiting for the full ticket merge, and every subsequent architect invocation sees every prior decision.
+
+The tradeoff is that the architect phase becomes a serialization point (only one runs at a time). In practice this is a minor bottleneck — architect invocations are fast compared to the development and testing phases that run fully in parallel.
+
 ---
 
 ## Prerequisites
@@ -220,6 +243,7 @@ Agents are native [Claude Code subagents](https://code.claude.com/docs/en/sub-ag
 | Agent | Activation | Role |
 |-------|------------|------|
 | **splitter** | `--split` / always (dep analysis) | Splits complex tickets and analyzes missing dependencies with DAG validation |
+| **merge-resolver** | Merge conflicts in multi-instance | Resolves git merge conflicts when the merge arbitrator detects them |
 
 ### Unused Subagent Definitions
 
@@ -288,7 +312,7 @@ Each selected ticket runs through these stages in order:
 5. **Deployment** — runs build/lint/test commands to gate the final result; updates README and docs to reflect changes
 6. **Merge** — feature branch is merged to `main`; `passes` is set to `true` in `prd.json`; `Output/progress.md` is updated
 
-In multi-instance mode, steps 1-5 run in an isolated git worktree, and step 6 uses the **merge arbitrator** to serialize merges.
+In multi-instance mode, steps 1-5 run in an isolated git worktree. Step 2 uses the **ADR arbitrator** to serialize architect invocations and fast-track new ADRs to main, and step 6 uses the **merge arbitrator** to serialize merges.
 
 ### Startup recovery
 

@@ -74,7 +74,7 @@ supervisor_worker_loop() {
     workspace_init "${wt_path}" 2>/dev/null || true
 
     local ticket_rc=0
-    loop_run_ticket "${wt_path}" "${story}" "${branch}" "${max_retries}" "true" || ticket_rc=1
+    loop_run_ticket "${wt_path}" "${story}" "${branch}" "${max_retries}" "true" "${workspace_root}" || ticket_rc=1
 
     if [[ "${ticket_rc}" -eq 0 ]]; then
       echo "[worker-${instance_id}] Merging ${story_id} to main..."
