@@ -125,6 +125,9 @@ supervisor_run() {
   echo "[supervisor] Starting ${num_instances} worker(s)"
   mkdir -p "${base_dir}"
 
+  # Clear stale fail counts from previous runs so reset tickets get a fresh budget
+  rm -rf "${base_dir}/.fail-counts" 2>/dev/null || true
+
   local -a worker_pids=()
   local i
 
