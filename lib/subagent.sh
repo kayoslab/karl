@@ -53,7 +53,7 @@ subagent_invoke_json() {
   fi
 
   # Try extracting the last JSON object (agents often write prose then JSON at the end)
-  extracted=$(printf '%s' "${raw}" | tac | sed -n '/^}/,/{/p' | tac)
+  extracted=$(printf '%s' "${raw}" | awk '{lines[NR]=$0} END {for(i=NR;i>=1;i--) print lines[i]}' | sed -n '/^}/,/{/p' | awk '{lines[NR]=$0} END {for(i=NR;i>=1;i--) print lines[i]}')
   if [[ -n "${extracted}" ]] && printf '%s' "${extracted}" | jq . > /dev/null 2>&1; then
     printf '%s' "${extracted}"
     return 0

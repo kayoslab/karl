@@ -33,7 +33,7 @@ merge_arbitrator_release() {
   rmdir "${lockdir}" 2>/dev/null || true
 }
 
-# merge_arbitrator_merge <workspace_root> <worktree_path> <ticket_id> <branch>
+# merge_arbitrator_merge <workspace_root> <worktree_path> <ticket_id> <branch> [summary]
 # Serialized merge workflow:
 #   1. Acquire merge lock
 #   2. Dry-run merge-tree check
@@ -46,6 +46,7 @@ merge_arbitrator_merge() {
   local wt_path="${2:?worktree_path required}"
   local ticket_id="${3:?ticket_id required}"
   local branch="${4:?branch required}"
+  local summary="${5:-merged from worktree}"
 
   echo "[merge_arbitrator] Acquiring merge lock for ${ticket_id}..."
   if ! merge_arbitrator_acquire "${workspace_root}"; then
@@ -55,20 +56,21 @@ merge_arbitrator_merge() {
 
   # Ensure we always release the lock
   local merge_rc=0
-  _merge_arbitrator_do_merge "${workspace_root}" "${wt_path}" "${ticket_id}" "${branch}" || merge_rc=$?
+  _merge_arbitrator_do_merge "${workspace_root}" "${wt_path}" "${ticket_id}" "${branch}" "${summary}" || merge_rc=$?
 
   merge_arbitrator_release "${workspace_root}"
 
   return "${merge_rc}"
 }
 
-# _merge_arbitrator_do_merge <workspace_root> <worktree_path> <ticket_id> <branch>
+# _merge_arbitrator_do_merge <workspace_root> <worktree_path> <ticket_id> <branch> <summary>
 # Internal: performs the actual merge while lock is held.
 _merge_arbitrator_do_merge() {
   local workspace_root="${1:?workspace_root required}"
   local wt_path="${2:?worktree_path required}"
   local ticket_id="${3:?ticket_id required}"
   local branch="${4:?branch required}"
+  local summary="${5:-merged from worktree}"
 
   # Commit any outstanding changes in the worktree
   if git -C "${wt_path}" rev-parse --git-dir > /dev/null 2>&1; then
@@ -201,7 +203,7 @@ After resolving ALL conflicts, return your JSON summary."
 
   # Append to progress.md
   mkdir -p "${workspace_root}/Output"
-  printf '## %s: merged from worktree\n\n' "${ticket_id}" >> "${workspace_root}/Output/progress.md"
+  printf '## %s: %s\n\n' "${ticket_id}" "${summary}" >> "${workspace_root}/Output/progress.md"
 
   # Commit prd and progress updates
   git -C "${workspace_root}" add -A > /dev/null 2>&1 || true

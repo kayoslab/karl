@@ -78,7 +78,7 @@ supervisor_worker_loop() {
 
     if [[ "${ticket_rc}" -eq 0 ]]; then
       echo "[worker-${instance_id}] Merging ${story_id} to main..."
-      if ! merge_arbitrator_merge "${workspace_root}" "${wt_path}" "${story_id}" "${branch}"; then
+      if ! merge_arbitrator_merge "${workspace_root}" "${wt_path}" "${story_id}" "${branch}" "${story_title}"; then
         worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
         prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
       else

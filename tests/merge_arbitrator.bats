@@ -108,7 +108,8 @@ teardown() {
   git -C "${WORKSPACE_ROOT}" commit -m "feat" > /dev/null 2>&1
   git -C "${WORKSPACE_ROOT}" checkout main > /dev/null 2>&1
 
-  merge_arbitrator_merge "${WORKSPACE_ROOT}" "${WORKSPACE_ROOT}" "US-001" "feature/US-001-test"
+  merge_arbitrator_merge "${WORKSPACE_ROOT}" "${WORKSPACE_ROOT}" "US-001" "feature/US-001-test" "Add widget support"
   [ -f "${WORKSPACE_ROOT}/Output/progress.md" ]
   grep -q "US-001" "${WORKSPACE_ROOT}/Output/progress.md"
+  grep -q "Add widget support" "${WORKSPACE_ROOT}/Output/progress.md"
 }
