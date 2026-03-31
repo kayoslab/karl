@@ -3,6 +3,37 @@
 
 set -euo pipefail
 
+# _supervisor_kill_tree <pid>
+# Recursively kill a process and all its descendants.
+_supervisor_kill_tree() {
+  local pid="${1}"
+  local children
+  children=$(pgrep -P "${pid}" 2>/dev/null) || true
+  for child in ${children}; do
+    _supervisor_kill_tree "${child}"
+  done
+  kill "${pid}" 2>/dev/null || true
+}
+
+# _supervisor_kill_orphans <workspace_root>
+# Kill any orphaned node/vitest processes with cwd inside the workspace or its worktrees.
+_supervisor_kill_orphans() {
+  local workspace_root="${1}"
+  # Kill node processes whose command line references the workspace worktrees
+  local wt_base="${workspace_root}-worktrees"
+  # Find node/vitest processes referencing the worktree directory
+  pgrep -f "node.*${wt_base}" 2>/dev/null | while IFS= read -r pid; do
+    kill "${pid}" 2>/dev/null || true
+  done
+  pgrep -f "vitest.*${wt_base}" 2>/dev/null | while IFS= read -r pid; do
+    kill "${pid}" 2>/dev/null || true
+  done
+  # Also catch processes referencing the main workspace
+  pgrep -f "node.*${workspace_root}" 2>/dev/null | while IFS= read -r pid; do
+    kill "${pid}" 2>/dev/null || true
+  done
+}
+
 # _supervisor_backoff <instance_id> <consecutive_failures>
 # Exponential backoff: 30s, 60s, 120s, 240s, capped at 300s (5 min).
 _supervisor_backoff() {
@@ -151,11 +182,10 @@ supervisor_run() {
     echo "" >&2
     echo "[supervisor] Interrupted — killing all workers..." >&2
     for pid in "${worker_pids[@]}"; do
-      # Kill the worker's entire process group
-      kill -- -"${pid}" 2>/dev/null || kill "${pid}" 2>/dev/null || true
+      _supervisor_kill_tree "${pid}"
     done
-    # Also kill any claude processes spawned by this session
-    pkill -P $$ 2>/dev/null || true
+    # Kill any orphaned node/vitest processes from subagents
+    _supervisor_kill_orphans "${workspace_root}" 2>/dev/null || true
     echo "[supervisor] Cleaning up locks and worktrees..." >&2
     adr_arbitrator_release "${workspace_root}" 2>/dev/null || true
     merge_arbitrator_release "${workspace_root}" 2>/dev/null || true
@@ -181,7 +211,8 @@ supervisor_run() {
   # Clear the trap
   trap - INT TERM
 
-  echo "[supervisor] Cleaning up worktrees..."
+  echo "[supervisor] Cleaning up worktrees and orphaned processes..."
+  _supervisor_kill_orphans "${workspace_root}" 2>/dev/null || true
   worktree_cleanup_all "${workspace_root}" "${base_dir}" 2>/dev/null || true
 
   if [[ "${any_failed}" -ne 0 ]]; then

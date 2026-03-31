@@ -244,7 +244,17 @@ main() {
     exit 1
   fi
 
-  trap 'pkill -P $$ 2>/dev/null || true; lock_release "${WORKSPACE_ROOT}"' EXIT INT TERM
+  # Kill all descendant processes and clean up orphaned node/vitest processes
+  _karl_cleanup() {
+    local children
+    children=$(pgrep -P $$ 2>/dev/null) || true
+    for child in ${children}; do
+      _supervisor_kill_tree "${child}" 2>/dev/null || true
+    done
+    _supervisor_kill_orphans "${WORKSPACE_ROOT}" 2>/dev/null || true
+    lock_release "${WORKSPACE_ROOT}"
+  }
+  trap '_karl_cleanup' EXIT INT TERM
 
   echo "karl: workspace ready, lock acquired (PID $$) [max-retries=${MAX_RETRIES}]"
 
