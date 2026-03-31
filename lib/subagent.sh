@@ -82,11 +82,9 @@ subagent_invoke() {
   local max_retries="${KARL_RATE_LIMIT_MAX_RETRIES}"
   local backoff_base="${KARL_RATE_LIMIT_BACKOFF_BASE}"
 
-  # Build schema args
-  local -a schema_args=()
-  if [[ -n "${json_schema}" ]]; then
-    schema_args=(--json-schema "${json_schema}")
-  fi
+  # NOTE: --json-schema is not passed to the CLI. It was causing empty responses
+  # when combined with --agent. Schemas are still used for post-response validation
+  # and normalization via _subagent_validate_schema and _subagent_normalize.
 
   while true; do
     local response="" stderr_file rc=0
@@ -95,12 +93,10 @@ subagent_invoke() {
     if [[ "${KARL_VERBOSE:-false}" == "true" ]]; then
       response=$(claude --agent "${agent_name}" --print --output-format text \
         --dangerously-skip-permissions \
-        "${schema_args[@]+"${schema_args[@]}"}" \
         -p "${prompt_text}" 2> >(tee "${stderr_file}" >&2)) || rc=$?
     else
       response=$(claude --agent "${agent_name}" --print --output-format text \
         --dangerously-skip-permissions \
-        "${schema_args[@]+"${schema_args[@]}"}" \
         -p "${prompt_text}" 2>"${stderr_file}") || rc=$?
     fi
 
