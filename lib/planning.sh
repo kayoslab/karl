@@ -49,33 +49,51 @@ Plan: ${plan_response}"
     fi
     printf '%s\n' "${review_response}" > "${artifact_dir}/review.json"
 
-    # Check multiple approval field patterns: approved:true, verdict:"approve"/"approved"
+    # Check multiple approval field patterns agents may use
     local approved
     approved=$(printf '%s' "${review_response}" | jq -r '
       if .approved == true then "true"
+      elif .planApproved == true then "true"
+      elif .readyToExecute == true then "true"
       elif (.verdict // "" | test("^approve"; "i")) then "true"
+      elif (.decision // "" | test("^approve"; "i")) then "true"
       else "false"
       end')
 
     if [[ "${approved}" == "true" ]]; then
-      echo "[planning] Plan approved for ${story_id}"
+      # Merge reviewer corrections into the plan so downstream agents see them
+      local corrections
+      corrections=$(printf '%s' "${review_response}" | jq -r '
+        def extract: if type == "array" then . else [.] end;
+        [(.corrections // [])[], (.refinements // [])[], (.changes_required // [])[]]
+        | if length > 0 then map(if type == "string" then . else tostring end) else empty end
+        | join("; ")' 2>/dev/null) || corrections=""
+      if [[ -n "${corrections}" ]]; then
+        echo "[planning] Plan approved with corrections for ${story_id}"
+        # Append corrections to plan.json so developer sees them
+        printf '%s\n' "${plan_response}" | jq --arg c "${corrections}" '. + {reviewer_corrections: $c}' \
+          > "${artifact_dir}/plan.json" 2>/dev/null || true
+      else
+        echo "[planning] Plan approved for ${story_id}"
+      fi
       git -C "${workspace_root}" add -A > /dev/null 2>&1 || true
       git -C "${workspace_root}" commit -m "plan: [${story_id}] implementation plan approved" > /dev/null 2>&1 || true
       return 0
     fi
 
     # Extract feedback from any field that looks like reviewer concerns.
-    # Handles: concerns, changes_required, notes, feedback, reason, comments
     # Each can be a string or an array of strings/objects.
     feedback=$(printf '%s' "${review_response}" | jq -r '
       def extract: if type == "array" then .[] else . end | if type == "string" then . else tostring end;
       [
-        (.concerns       // null | if . then extract else empty end),
+        (.concerns         // null | if . then extract else empty end),
         (.changes_required // null | if . then extract else empty end),
-        (.notes          // null | if . then extract else empty end),
-        (.feedback       // null | if . then extract else empty end),
-        (.reason         // null | if . then extract else empty end),
-        (.comments       // null | if . then extract else empty end)
+        (.corrections      // null | if . then extract else empty end),
+        (.refinements      // null | if . then extract else empty end),
+        (.notes            // null | if . then extract else empty end),
+        (.feedback         // null | if . then extract else empty end),
+        (.reason           // null | if . then extract else empty end),
+        (.comments         // null | if . then extract else empty end)
       ] | map(select(length > 0)) | join("; ")')
 
     if [[ -z "${feedback}" ]]; then

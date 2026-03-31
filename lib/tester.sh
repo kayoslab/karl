@@ -82,17 +82,25 @@ TESTPROMPT
   rm -f "${prompt_file}"
   printf '%s\n' "${response}" > "${artifact_dir}/tests.json"
 
+  # Check multiple field names for test results
   local test_results
-  test_results=$(printf '%s' "${response}" | jq -r '.test_results // "fail"')
+  test_results=$(printf '%s' "${response}" | jq -r '
+    (.test_results // .result // .status // .outcome // "fail")
+    | if test("^pass"; "i") then "pass" else "fail" end')
 
   if [[ "${test_results}" == "pass" ]]; then
     return 0
   fi
 
-  # Store failure info for rework loop
-  printf '%s' "${response}" | jq -r '.failure_source // "implementation"' > "${artifact_dir}/failure_source.txt"
-  # Handle failures as array of strings or objects — always produce readable text
-  printf '%s' "${response}" | jq -r '(.failures // []) | map(if type == "string" then . else tostring end) | join("\n")' > "${artifact_dir}/failures.txt" 2>/dev/null || \
+  # Store failure info for rework loop — check multiple field names
+  printf '%s' "${response}" | jq -r '
+    .failure_source // .source // .blame // .failed_component // "implementation"' \
+    > "${artifact_dir}/failure_source.txt"
+  # Handle failures as array of strings or objects — check multiple field names
+  printf '%s' "${response}" | jq -r '
+    (.failures // .errors // .failed_tests // .issues // [])
+    | if type == "array" then map(if type == "string" then . else tostring end) | join("\n")
+      else tostring end' > "${artifact_dir}/failures.txt" 2>/dev/null || \
     printf '%s' "${response}" | jq -r '.failures // "unknown failure"' > "${artifact_dir}/failures.txt"
 
   git -C "${workspace_root}" add -A > /dev/null 2>&1 || true

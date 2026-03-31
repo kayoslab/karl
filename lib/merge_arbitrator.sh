@@ -156,7 +156,9 @@ After resolving ALL conflicts, return your JSON summary."
     local resolve_response
     if resolve_response=$(cd "${workspace_root}" && subagent_invoke_json "merge-resolver" "${resolve_prompt}" 2>/dev/null); then
       local resolution
-      resolution=$(printf '%s' "${resolve_response}" | jq -r '.resolution // "unresolvable"' 2>/dev/null) || resolution="unresolvable"
+      resolution=$(printf '%s' "${resolve_response}" | jq -r '
+        (.resolution // .status // .result // "unresolvable")
+        | if test("^resolve"; "i") then "resolved" else "unresolvable" end' 2>/dev/null) || resolution="unresolvable"
 
       if [[ "${resolution}" == "resolved" ]]; then
         # Check if all conflicts are actually resolved (no remaining markers)
