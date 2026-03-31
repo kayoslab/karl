@@ -38,14 +38,19 @@ bootstrap_workspace() {
     fi
   done
 
-  # Ensure LOCK is gitignored in the workspace (prevents branch-switch conflicts)
+  # Ensure LOCK files are gitignored in the workspace (prevents branch-switch conflicts)
+  # Use LOCK* to also catch Finder/iCloud sync duplicates (LOCK 2, LOCK 3, etc.)
   local gitignore="${root}/.gitignore"
   if [[ -f "${gitignore}" ]]; then
-    if ! grep -qx 'LOCK' "${gitignore}" 2>/dev/null; then
-      printf '\nLOCK\n' >> "${gitignore}"
+    if grep -qx 'LOCK' "${gitignore}" 2>/dev/null; then
+      # Upgrade existing LOCK entry to LOCK* glob
+      sed -i '' 's/^LOCK$/LOCK*/' "${gitignore}" 2>/dev/null || \
+        sed -i 's/^LOCK$/LOCK*/' "${gitignore}" 2>/dev/null || true
+    elif ! grep -q 'LOCK' "${gitignore}" 2>/dev/null; then
+      printf '\nLOCK*\n' >> "${gitignore}"
     fi
   else
-    printf 'LOCK\n' > "${gitignore}"
+    printf 'LOCK*\n' > "${gitignore}"
   fi
 
   return 0

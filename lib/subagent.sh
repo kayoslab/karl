@@ -7,24 +7,29 @@ set -euo pipefail
 KARL_RATE_LIMIT_MAX_RETRIES="${KARL_RATE_LIMIT_MAX_RETRIES:-5}"
 KARL_RATE_LIMIT_BACKOFF_BASE="${KARL_RATE_LIMIT_BACKOFF_BASE:-30}"
 
-# _subagent_is_rate_limited <stderr_output> <exit_code>
-# Returns 0 if the error looks like a rate limit, 1 otherwise.
-_subagent_is_rate_limited() {
-  local stderr_output="${1:-}"
-  local exit_code="${2:-1}"
+# _subagent_check_limit <text>
+# Checks if text contains rate/usage limit indicators.
+# Handles CLI messages like "You've hit your limit · resets 10am"
+# and API errors like "rate_limit_error" or HTTP 429.
+# Returns 0 if limit detected, 1 otherwise.
+_subagent_check_limit() {
+  local text="${1:-}"
+  [[ -z "${text}" ]] && return 1
 
-  # Non-zero exit with rate-limit indicators in stderr
-  if [[ "${exit_code}" -ne 0 ]] && [[ -n "${stderr_output}" ]]; then
-    local lower
-    lower=$(printf '%s' "${stderr_output}" | tr '[:upper:]' '[:lower:]')
-    if [[ "${lower}" == *"rate"*"limit"* ]] || \
-       [[ "${lower}" == *"rate_limit"* ]] || \
-       [[ "${lower}" == *"too many requests"* ]] || \
-       [[ "${lower}" == *"429"* ]] || \
-       [[ "${lower}" == *"overloaded"* ]] || \
-       [[ "${lower}" == *"capacity"* ]]; then
-      return 0
-    fi
+  local lower
+  lower=$(printf '%s' "${text}" | tr '[:upper:]' '[:lower:]')
+
+  if [[ "${lower}" == *"hit your limit"* ]] || \
+     [[ "${lower}" == *"hit the limit"* ]] || \
+     [[ "${lower}" == *"you've hit"*"limit"* ]] || \
+     [[ "${lower}" == *"rate"*"limit"* ]] || \
+     [[ "${lower}" == *"rate_limit"* ]] || \
+     [[ "${lower}" == *"too many requests"* ]] || \
+     [[ "${lower}" == *"429"* ]] || \
+     [[ "${lower}" == *"overloaded"* ]] || \
+     [[ "${lower}" == *"resource_exhausted"* ]] || \
+     [[ "${lower}" == *"quota"*"exceeded"* ]]; then
+    return 0
   fi
 
   return 1
@@ -33,7 +38,7 @@ _subagent_is_rate_limited() {
 # subagent_invoke <agent_name> <prompt_text>
 # Invokes a Claude Code subagent in headless mode with tool access.
 # Uses --dangerously-skip-permissions so agents can write files without prompting.
-# Retries with exponential backoff on rate limit errors.
+# Detects rate limit messages in both stdout and stderr, retries with backoff.
 # Prints the agent's final text response to stdout.
 # Returns 0 on success, 1 on failure, 2 on rate limit exhaustion.
 subagent_invoke() {
@@ -62,24 +67,25 @@ subagent_invoke() {
     [[ -f "${stderr_file}" ]] && stderr_output=$(cat "${stderr_file}")
     rm -f "${stderr_file}"
 
-    if [[ "${rc}" -eq 0 ]]; then
-      printf '%s' "${response}"
-      return 0
-    fi
-
-    # Check if this is a rate limit error
-    if _subagent_is_rate_limited "${stderr_output}" "${rc}"; then
+    # Check for rate limit in both stdout (response) and stderr
+    # The CLI outputs "You've hit your limit" on stdout with rc=0
+    local combined="${response}${stderr_output}"
+    if _subagent_check_limit "${combined}"; then
       attempt=$((attempt + 1))
       if [[ "${attempt}" -ge "${max_retries}" ]]; then
         echo "ERROR: Rate limit persists after ${max_retries} retries for ${agent_name}" >&2
         return 2
       fi
       local wait_time=$((backoff_base * (2 ** (attempt - 1))))
-      # Cap at 5 minutes
       [[ "${wait_time}" -gt 300 ]] && wait_time=300
-      echo "[rate_limit] ${agent_name} rate-limited — waiting ${wait_time}s (attempt ${attempt}/${max_retries})" >&2
+      echo "[rate_limit] ${agent_name} hit limit — waiting ${wait_time}s (attempt ${attempt}/${max_retries})" >&2
       sleep "${wait_time}"
       continue
+    fi
+
+    if [[ "${rc}" -eq 0 ]]; then
+      printf '%s' "${response}"
+      return 0
     fi
 
     # Non-rate-limit failure — return immediately

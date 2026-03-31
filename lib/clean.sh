@@ -52,14 +52,19 @@ clean_delete_branch() {
 }
 
 # clean_remove_lock <workspace>
-# Removes the LOCK file if present.
+# Removes LOCK files including Finder/iCloud sync duplicates (LOCK 2, LOCK 3, etc.)
 clean_remove_lock() {
   local workspace="${1:?workspace required}"
-  local lock_file="${workspace}/LOCK"
+  local found=0
 
-  if [ -f "${lock_file}" ]; then
-    rm -f "${lock_file}"
-    echo "karl clean: Removed LOCK file"
+  # Use find to handle filenames with spaces (LOCK 2, LOCK 3, etc.)
+  while IFS= read -r -d '' f; do
+    rm -f "${f}"
+    found=1
+  done < <(find "${workspace}" -maxdepth 1 -name 'LOCK*' -print0 2>/dev/null)
+
+  if [[ "${found}" -eq 1 ]]; then
+    echo "karl clean: Removed LOCK file(s)"
   else
     echo "karl clean: No LOCK file present"
   fi

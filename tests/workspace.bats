@@ -36,24 +36,31 @@ teardown() {
   run bootstrap_workspace "${WORKSPACE_ROOT}"
   [ "$status" -eq 0 ]
   [ -f "${WORKSPACE_ROOT}/.gitignore" ]
-  grep -qx 'LOCK' "${WORKSPACE_ROOT}/.gitignore"
+  grep -q 'LOCK' "${WORKSPACE_ROOT}/.gitignore"
 }
 
 @test "bootstrap_workspace appends LOCK to existing .gitignore" {
   echo "*.log" > "${WORKSPACE_ROOT}/.gitignore"
   run bootstrap_workspace "${WORKSPACE_ROOT}"
   [ "$status" -eq 0 ]
-  grep -qx 'LOCK' "${WORKSPACE_ROOT}/.gitignore"
+  grep -q 'LOCK' "${WORKSPACE_ROOT}/.gitignore"
   grep -qx '\*.log' "${WORKSPACE_ROOT}/.gitignore"
 }
 
 @test "bootstrap_workspace does not duplicate LOCK in .gitignore" {
-  echo "LOCK" > "${WORKSPACE_ROOT}/.gitignore"
+  echo "LOCK*" > "${WORKSPACE_ROOT}/.gitignore"
   run bootstrap_workspace "${WORKSPACE_ROOT}"
   [ "$status" -eq 0 ]
   local count
-  count=$(grep -cx 'LOCK' "${WORKSPACE_ROOT}/.gitignore")
+  count=$(grep -c 'LOCK' "${WORKSPACE_ROOT}/.gitignore")
   [ "$count" -eq 1 ]
+}
+
+@test "bootstrap_workspace upgrades LOCK to LOCK* in existing .gitignore" {
+  echo "LOCK" > "${WORKSPACE_ROOT}/.gitignore"
+  run bootstrap_workspace "${WORKSPACE_ROOT}"
+  [ "$status" -eq 0 ]
+  grep -qx 'LOCK\*' "${WORKSPACE_ROOT}/.gitignore"
 }
 
 @test "bootstrap_workspace does not overwrite existing output files" {
