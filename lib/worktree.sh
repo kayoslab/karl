@@ -57,7 +57,15 @@ worktree_create() {
   # Clean up stale branch from a previous failed run if needed
   if git -C "${workspace_root}" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
     echo "[worktree] Removing stale branch ${branch}" >&2
+    # Prune worktree references first so the branch isn't considered "checked out"
+    git -C "${workspace_root}" worktree prune 2>/dev/null || true
+    # Ensure main repo is on main, not on the stale branch
+    git -C "${workspace_root}" checkout main 2>/dev/null || true
     git -C "${workspace_root}" branch -D "${branch}" 2>/dev/null || true
+    # Last resort: delete the ref directly
+    if git -C "${workspace_root}" show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
+      git -C "${workspace_root}" update-ref -d "refs/heads/${branch}" 2>/dev/null || true
+    fi
   fi
 
   if ! git -C "${workspace_root}" worktree add -b "${branch}" "${wt_path}" main 2>&1; then
