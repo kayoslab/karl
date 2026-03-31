@@ -60,7 +60,15 @@ Plan: ${plan_response}"
     fi
 
     feedback=$(printf '%s' "${review_response}" | jq -r '(.concerns // []) | map(if type == "string" then . else tostring end) | join("; ")')
-    echo "[planning] Plan rejected (attempt ${attempt}/${max_retries}): ${feedback}"
+
+    if [[ -z "${feedback}" ]]; then
+      # Reviewer rejected without feedback — don't count this attempt, retry with guidance
+      attempt=$((attempt - 1))
+      feedback="Previous plan was rejected without specific concerns. Revise your approach significantly — try a different implementation strategy."
+      echo "[planning] Plan rejected without feedback for ${story_id} — retrying with guidance"
+    else
+      echo "[planning] Plan rejected (attempt ${attempt}/${max_retries}): ${feedback}"
+    fi
   done
 
   echo "ERROR: Planning failed after ${max_retries} attempts for ${story_id}" >&2

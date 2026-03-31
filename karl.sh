@@ -248,8 +248,10 @@ main() {
 
   echo "karl: workspace ready, lock acquired (PID $$) [max-retries=${MAX_RETRIES}]"
 
-  # Clean up stale PRD lock from a previous crash
+  # Clean up stale locks from a previous crash
   _prd_lock_release "${WORKSPACE_ROOT}"
+  adr_arbitrator_release "${WORKSPACE_ROOT}"
+  merge_arbitrator_release "${WORKSPACE_ROOT}"
 
   # Recover from a previous crash/failure: reset in_progress and failed tickets
   prd_reset_in_progress "${WORKSPACE_ROOT}"

@@ -3,6 +3,17 @@
 
 set -euo pipefail
 
+# _supervisor_backoff <instance_id> <consecutive_failures>
+# Exponential backoff: 30s, 60s, 120s, 240s, capped at 300s (5 min).
+_supervisor_backoff() {
+  local instance_id="${1}"
+  local consecutive="${2}"
+  local wait_time=$((30 * (2 ** (consecutive - 1))))
+  [[ "${wait_time}" -gt 300 ]] && wait_time=300
+  echo "[worker-${instance_id}] Backing off for ${wait_time}s (${consecutive} consecutive failures)" >&2
+  sleep "${wait_time}"
+}
+
 # supervisor_worker_loop <workspace_root> <instance_id> <max_retries> [worktree_dir]
 # Worker loop: claim ticket -> worktree -> run pipeline -> merge -> cleanup -> repeat.
 # Returns 0 when no more tickets are available, 1 on fatal error.
@@ -22,7 +33,6 @@ supervisor_worker_loop() {
   echo "[worker-${instance_id}] Starting worker loop"
 
   local consecutive_failures=0
-  local max_consecutive_failures=3
   local fail_dir="${base_dir}/.fail-counts"
   mkdir -p "${fail_dir}"
 
@@ -66,8 +76,7 @@ supervisor_worker_loop() {
       echo "[worker-${instance_id}] Failed to create worktree for ${story_id}" >&2
       prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
       consecutive_failures=$((consecutive_failures + 1))
-      [[ "${consecutive_failures}" -ge "${max_consecutive_failures}" ]] && return 1
-      sleep 2
+      _supervisor_backoff "${instance_id}" "${consecutive_failures}"
       continue
     fi
 
@@ -87,14 +96,16 @@ supervisor_worker_loop() {
         worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
       fi
     else
-      echo "[worker-${instance_id}] Ticket ${story_id} failed" >&2
+      consecutive_failures=$((consecutive_failures + 1))
+
+      # Clean worktree before releasing to prevent race conditions
+      worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
+
+      # Always count against retry budget
       local fail_count=0
       [[ -f "${fail_dir}/${story_id}" ]] && fail_count=$(cat "${fail_dir}/${story_id}")
       fail_count=$((fail_count + 1))
       printf '%d' "${fail_count}" > "${fail_dir}/${story_id}"
-
-      # Clean worktree before releasing to prevent race conditions
-      worktree_remove "${workspace_root}" "${story_id}" "${base_dir}" 2>/dev/null || true
 
       if [[ "${fail_count}" -ge "${max_retries}" ]]; then
         echo "[worker-${instance_id}] Ticket ${story_id} permanently failed (${fail_count}/${max_retries})" >&2
@@ -102,6 +113,10 @@ supervisor_worker_loop() {
       else
         echo "[worker-${instance_id}] Ticket ${story_id} failed (${fail_count}/${max_retries}) — releasing" >&2
         prd_release_ticket "${workspace_root}" "${story_id}" 2>/dev/null || true
+        # Back off on consecutive failures to avoid tight retry loops
+        if [[ "${consecutive_failures}" -ge 2 ]]; then
+          _supervisor_backoff "${instance_id}" "${consecutive_failures}"
+        fi
       fi
     fi
     echo "[worker-${instance_id}] Done with ${story_id}"
@@ -141,7 +156,9 @@ supervisor_run() {
     done
     # Also kill any claude processes spawned by this session
     pkill -P $$ 2>/dev/null || true
-    echo "[supervisor] Cleaning up worktrees..." >&2
+    echo "[supervisor] Cleaning up locks and worktrees..." >&2
+    adr_arbitrator_release "${workspace_root}" 2>/dev/null || true
+    merge_arbitrator_release "${workspace_root}" 2>/dev/null || true
     worktree_cleanup_all "${workspace_root}" "${base_dir}" 2>/dev/null || true
     echo "[supervisor] Shutdown complete" >&2
   }
