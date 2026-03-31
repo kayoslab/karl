@@ -49,12 +49,16 @@ Plan: ${plan_response}"
     fi
     printf '%s\n' "${review_response}" > "${artifact_dir}/review.json"
 
-    # Check for approval — flatten the response to a single string and scan for patterns
+    # Check for approval:
+    #   1. Any boolean true field whose key suggests approval
+    #   2. Any string value (top-level or one-level nested) that says "approved" etc.
+    #   3. Any string value indicating work is already done
     local approved
     approved=$(printf '%s' "${review_response}" | jq -r '
-      if .approved == true then "true"
-      elif .planApproved == true then "true"
-      elif .readyToExecute == true then "true"
+      # Check boolean fields with approval-like keys
+      if any(to_entries[];
+        .value == true and (.key | test("approv|pass|ready|accept"; "i"))
+      ) then "true"
       else
         # Flatten all top-level and one-level-nested string values into one blob
         [to_entries[] | .value | if type == "string" then .
