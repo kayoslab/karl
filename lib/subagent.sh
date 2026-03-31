@@ -280,12 +280,12 @@ _subagent_normalize() {
       end
     end) |
 
-    # Normalize adr_entry
+    # Normalize adr_entry — default to null (no ADR needed)
     (if has("adr_entry") then . else
       if has("adr") then .adr_entry = .adr
       elif has("adr_content") then .adr_entry = .adr_content
       elif has("decision_record") then .adr_entry = .decision_record
-      else .
+      else .adr_entry = null
       end
     end) |
 
@@ -293,7 +293,10 @@ _subagent_normalize() {
     (if has("concerns") then . else .concerns = [] end) |
 
     # Ensure approved exists — default to false if nothing matched above
-    (if has("approved") then . else .approved = false end)
+    (if has("approved") then . else .approved = false end) |
+
+    # Ensure failures array exists
+    (if has("failures") then . else .failures = [] end)
   ' 2>/dev/null) || result=""
 
   # If jq normalization failed entirely, try a simpler last-resort
