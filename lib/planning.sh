@@ -64,20 +64,26 @@ Plan: ${plan_response}"
       return 0
     fi
 
-    # Extract feedback from multiple possible field names
+    # Extract feedback from any field that looks like reviewer concerns.
+    # Handles: concerns, changes_required, notes, feedback, reason, comments
+    # Each can be a string or an array of strings/objects.
     feedback=$(printf '%s' "${review_response}" | jq -r '
-      [(.concerns // [])[], (.changes_required // [])[], (.notes // [])[]]
-      | map(if type == "string" then . else tostring end)
-      | join("; ")')
+      def extract: if type == "array" then .[] else . end | if type == "string" then . else tostring end;
+      [
+        (.concerns       // null | if . then extract else empty end),
+        (.changes_required // null | if . then extract else empty end),
+        (.notes          // null | if . then extract else empty end),
+        (.feedback       // null | if . then extract else empty end),
+        (.reason         // null | if . then extract else empty end),
+        (.comments       // null | if . then extract else empty end)
+      ] | map(select(length > 0)) | join("; ")')
 
     if [[ -z "${feedback}" ]]; then
-      # Reviewer rejected without feedback — don't count this attempt, retry with guidance
-      attempt=$((attempt - 1))
-      feedback="Previous plan was rejected without specific concerns. Revise your approach significantly — try a different implementation strategy."
-      echo "[planning] Plan rejected without feedback for ${story_id} — retrying with guidance"
-    else
-      echo "[planning] Plan rejected (attempt ${attempt}/${max_retries}): ${feedback}"
+      # Last resort: dump the entire response minus the verdict/approved fields
+      feedback=$(printf '%s' "${review_response}" | jq -r 'del(.approved, .verdict, .plan_hash) | tostring')
     fi
+
+    echo "[planning] Plan rejected (attempt ${attempt}/${max_retries}): ${feedback}"
   done
 
   echo "ERROR: Planning failed after ${max_retries} attempts for ${story_id}" >&2
