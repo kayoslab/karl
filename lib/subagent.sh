@@ -225,10 +225,10 @@ _subagent_normalize() {
       elif (.verdict // "" | test("^approve"; "i")) then .approved = true
       elif (.review_status // "" | test("^approve"; "i")) then .approved = true
       elif (.status // "" | test("^approve"; "i")) then .approved = true
-      elif (.decision // "" | test("^approve"; "i")) then .approved = true
-      elif any(to_entries[]; .value == true and (.key | test("approv|pass|ready|accept"; "i")))
+      elif (.decision // "" | test("^approve|ready"; "i")) then .approved = true
+      elif any(to_entries[]; .value == true and (.key | test("approv|pass|ready|accept|valid"; "i")))
         then .approved = true
-      elif any(to_entries[]; .value | type == "string" and test("already.?implement|nothing.?to.?do|fully.?satisf"; "i"))
+      elif any(to_entries[]; .value | type == "string" and test("ready.?to.?implement|already.?implement|nothing.?to.?do|fully.?satisf"; "i"))
         then .approved = true
       else .
       end
