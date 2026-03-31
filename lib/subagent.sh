@@ -125,6 +125,21 @@ subagent_invoke() {
     fi
 
     if [[ "${rc}" -eq 0 ]]; then
+      # Empty response with rc=0 is suspicious — likely a silent rate limit
+      local trimmed_response
+      trimmed_response=$(printf '%s' "${response}" | tr -d '[:space:]')
+      if [[ -z "${trimmed_response}" ]]; then
+        attempt=$((attempt + 1))
+        if [[ "${attempt}" -ge "${max_retries}" ]]; then
+          echo "ERROR: ${agent_name} returned empty response after ${max_retries} retries" >&2
+          return 2
+        fi
+        local wait_time=$((backoff_base * (2 ** (attempt - 1))))
+        [[ "${wait_time}" -gt 300 ]] && wait_time=300
+        echo "[rate_limit] ${agent_name} returned empty response — waiting ${wait_time}s (attempt ${attempt}/${max_retries})" >&2
+        sleep "${wait_time}"
+        continue
+      fi
       printf '%s' "${response}"
       return 0
     fi
@@ -309,8 +324,15 @@ _subagent_normalize() {
 _subagent_extract_json() {
   local raw="${1}"
 
+  # Reject empty or whitespace-only responses
+  local trimmed
+  trimmed=$(printf '%s' "${raw}" | tr -d '[:space:]')
+  if [[ -z "${trimmed}" ]]; then
+    return 1
+  fi
+
   # Try raw response as-is (ideal case: agent returned pure JSON)
-  if printf '%s' "${raw}" | jq . > /dev/null 2>&1; then
+  if printf '%s' "${raw}" | jq -e 'type == "object"' > /dev/null 2>&1; then
     printf '%s' "${raw}"
     return 0
   fi
