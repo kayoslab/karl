@@ -174,10 +174,7 @@ subagent_invoke_json() {
       return 0
     fi
 
-    echo "[subagent] ${agent_name} response missing required fields: ${missing} — normalizing" >&2
-    if [[ "${KARL_VERBOSE:-false}" == "true" ]]; then
-      echo "[subagent] Original response: ${json}" >&2
-    fi
+    echo "[subagent] ${agent_name} response missing required fields: ${missing} — normalizing (response: $(printf '%s' "${json}" | head -c 300))" >&2
 
     # Try to normalize the response by mapping common variant fields
     local normalized
@@ -206,7 +203,8 @@ _subagent_normalize() {
   local json="${1}"
   local schema="${2}"
 
-  printf '%s' "${json}" | jq '
+  local result
+  result=$(printf '%s' "${json}" | jq '
     # Normalize approval boolean
     (if has("approved") then . else
       if has("reviewPass") then .approved = .reviewPass | del(.reviewPass)
@@ -228,10 +226,10 @@ _subagent_normalize() {
     # Normalize concerns array
     (if has("concerns") then . else
       if has("changes_required") then .concerns = .changes_required
+      elif has("changes") then .concerns = .changes
       elif has("corrections") then .concerns = (.corrections | map(if type == "string" then . else tostring end))
       elif has("issues") then .concerns = (.issues | map(if type == "string" then . else tostring end))
       elif has("feedback") then .concerns = (if (.feedback | type) == "array" then .feedback else [.feedback] end)
-      elif has("notes") then .concerns = .notes
       else .concerns = []
       end
     end) |
@@ -280,19 +278,28 @@ _subagent_normalize() {
       end
     end) |
 
-    # Last resort: if approved is still missing, infer from response content
-    (if has("approved") then . else
-      # Check if any string value anywhere signals approval
-      if (tostring | test("approved|approve|APPROVED|LGTM|pass|accept"; "i")) then
-        .approved = true
-      else
-        .approved = false
-      end
-    end) |
-
     # Ensure concerns array exists
-    (if has("concerns") then . else .concerns = [] end)
-  ' 2>/dev/null || printf '%s' "${json}"
+    (if has("concerns") then . else .concerns = [] end) |
+
+    # Ensure approved exists — default to false if nothing matched above
+    (if has("approved") then . else .approved = false end)
+  ' 2>/dev/null) || result=""
+
+  # If jq normalization failed entirely, try a simpler last-resort
+  if [[ -z "${result}" ]]; then
+    local lower
+    lower=$(printf '%s' "${json}" | tr '[:upper:]' '[:lower:]')
+    if [[ "${lower}" == *"\"approved\""*":"*"true"* ]] || \
+       [[ "${lower}" == *"\"approve\""* ]] || \
+       [[ "${lower}" == *"\"lgtm\""* ]] || \
+       [[ "${lower}" == *"reviewpass"*":"*"true"* ]]; then
+      result=$(printf '%s' "${json}" | jq '. + {approved: true, concerns: []}' 2>/dev/null) || result="${json}"
+    else
+      result=$(printf '%s' "${json}" | jq '. + {approved: false, concerns: []}' 2>/dev/null) || result="${json}"
+    fi
+  fi
+
+  printf '%s' "${result}"
 }
 
 # _subagent_extract_json <raw_text>
