@@ -49,8 +49,13 @@ Plan: ${plan_response}"
     fi
     printf '%s\n' "${review_response}" > "${artifact_dir}/review.json"
 
+    # Check multiple approval field patterns: approved:true, verdict:"approve"/"approved"
     local approved
-    approved=$(printf '%s' "${review_response}" | jq -r '.approved // false')
+    approved=$(printf '%s' "${review_response}" | jq -r '
+      if .approved == true then "true"
+      elif (.verdict // "" | test("^approve"; "i")) then "true"
+      else "false"
+      end')
 
     if [[ "${approved}" == "true" ]]; then
       echo "[planning] Plan approved for ${story_id}"
@@ -59,7 +64,11 @@ Plan: ${plan_response}"
       return 0
     fi
 
-    feedback=$(printf '%s' "${review_response}" | jq -r '(.concerns // []) | map(if type == "string" then . else tostring end) | join("; ")')
+    # Extract feedback from multiple possible field names
+    feedback=$(printf '%s' "${review_response}" | jq -r '
+      [(.concerns // [])[], (.changes_required // [])[], (.notes // [])[]]
+      | map(if type == "string" then . else tostring end)
+      | join("; ")')
 
     if [[ -z "${feedback}" ]]; then
       # Reviewer rejected without feedback — don't count this attempt, retry with guidance
