@@ -128,23 +128,47 @@ _merge_arbitrator_do_merge() {
       return 1
     fi
 
-    # Get diffs for context
+    # Gather context for the merge-resolver
     local main_diff
     main_diff=$(git -C "${workspace_root}" diff HEAD 2>/dev/null || true)
+
+    # What the feature branch was implementing (plan + ticket context from worktree)
+    local feature_context=""
+    local plan_file="${wt_path}/Output/${ticket_id}/plan.json"
+    if [[ -f "${plan_file}" ]]; then
+      feature_context=$(jq -r '
+        "Ticket: " + (.ticket // "unknown") + "\n" +
+        "Summary: " + (.summary // .title // "unknown") + "\n" +
+        "Steps: " + ((.steps // []) | map(if type == "string" then . else (.description // .title // tostring) end) | join("; "))
+      ' "${plan_file}" 2>/dev/null) || true
+    fi
+    [[ -z "${feature_context}" ]] && feature_context="Ticket ${ticket_id}: ${summary}"
+
+    # What changed on main since the branch point (other merged features)
+    local main_changes=""
+    main_changes=$(git -C "${workspace_root}" log --oneline "${merge_base}..main" 2>/dev/null | head -20) || true
 
     # Invoke the merge-resolver agent to fix conflicts
     local resolve_prompt
     resolve_prompt="Resolve the merge conflicts in this repository. The working directory is ${workspace_root}.
 
-Conflicted files:
+## Feature Branch Context
+This branch implements:
+${feature_context}
+
+## Changes on main since this branch was created
+${main_changes:-No other changes}
+
+## Conflicted files
 ${conflicted_files}
 
-Conflict diff:
+## Conflict diff
 ${main_diff}
 
+## Resolution instructions
 For each conflicted file:
 1. Read the file and find the conflict markers (<<<<<<< ======= >>>>>>>)
-2. Resolve the conflict by combining both sides appropriately
+2. Resolve the conflict by combining both sides appropriately — both the feature branch changes AND the main branch changes should be preserved
 3. Remove all conflict markers
 4. Stage the resolved file with git add
 

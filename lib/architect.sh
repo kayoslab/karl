@@ -27,6 +27,7 @@ architect_run() {
     echo "ERROR: Architect agent failed for ${story_id}" >&2
     return 1
   fi
+  mkdir -p "${artifact_dir}" 2>/dev/null || true
   printf '%s\n' "${response}" > "${artifact_dir}/architect.json"
 
   local adr_entry

@@ -49,14 +49,16 @@ Plan: ${plan_response}"
     fi
     printf '%s\n' "${review_response}" > "${artifact_dir}/review.json"
 
-    # Check multiple approval field patterns agents may use
+    # Check for approval — look for explicit boolean fields first,
+    # then scan any string field for approval-like values,
+    # then check for "already implemented" (nothing to do = approved)
     local approved
     approved=$(printf '%s' "${review_response}" | jq -r '
       if .approved == true then "true"
       elif .planApproved == true then "true"
       elif .readyToExecute == true then "true"
-      elif (.verdict // "" | test("^approve"; "i")) then "true"
-      elif (.decision // "" | test("^approve"; "i")) then "true"
+      elif any(to_entries[]; .value | type == "string" and test("^approve"; "i")) then "true"
+      elif any(to_entries[]; .value | type == "string" and test("already.?implement|nothing.?to.?do|no.?remaining.?work|fully.?satisf"; "i")) then "true"
       else "false"
       end')
 
