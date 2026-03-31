@@ -178,7 +178,7 @@ For Output/progress.md: keep the main branch version.
 After resolving ALL conflicts, return your JSON summary."
 
     local resolve_response
-    if resolve_response=$(cd "${workspace_root}" && subagent_invoke_json "merge-resolver" "${resolve_prompt}" 2>/dev/null); then
+    if resolve_response=$(cd "${workspace_root}" && subagent_invoke_json "merge-resolver" "${resolve_prompt}" "${SCHEMA_MERGE_RESOLVER:-}" 2>/dev/null); then
       local resolution
       resolution=$(printf '%s' "${resolve_response}" | jq -r '
         (.resolution // .status // .result // "unresolvable")

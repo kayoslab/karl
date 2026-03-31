@@ -19,6 +19,8 @@ source "${KARL_DIR}/lib/prd.sh"
 source "${KARL_DIR}/lib/retry.sh"
 # shellcheck source=lib/subagent.sh
 source "${KARL_DIR}/lib/subagent.sh"
+# shellcheck source=lib/schemas.sh
+source "${KARL_DIR}/lib/schemas.sh"
 # shellcheck source=lib/tech.sh
 source "${KARL_DIR}/lib/tech.sh"
 # shellcheck source=lib/planning.sh

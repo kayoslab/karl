@@ -74,7 +74,7 @@ Run the tests. Return ONLY a valid JSON object: {"tests_added": [], "tests_modif
 TESTPROMPT
 
   local response
-  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "tester" "$(cat "${prompt_file}")"); then
+  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "tester" "$(cat "${prompt_file}")" "${SCHEMA_TESTER:-}"); then
     rm -f "${prompt_file}"
     echo "ERROR: Tester verification failed for ${story_id}" >&2
     return 1

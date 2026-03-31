@@ -42,7 +42,7 @@ Return ONLY a valid JSON object: {"decision": "pass"|"fail", "gates_checked": ["
 DEPLOYPROMPT
 
   local response
-  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "deployment" "$(cat "${prompt_file}")"); then
+  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "deployment" "$(cat "${prompt_file}")" "${SCHEMA_DEPLOYMENT:-}"); then
     rm -f "${prompt_file}"
     echo "ERROR: Deployment gate agent failed for ${story_id}" >&2
     return 1

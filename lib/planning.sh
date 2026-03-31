@@ -43,7 +43,7 @@ Ticket: ${story_json}
 Plan: ${plan_response}"
 
     local review_response
-    if ! review_response=$(cd "${workspace_root}" && subagent_invoke_json "reviewer" "${review_prompt}"); then
+    if ! review_response=$(cd "${workspace_root}" && subagent_invoke_json "reviewer" "${review_prompt}" "${SCHEMA_REVIEWER:-}"); then
       echo "ERROR: Reviewer agent failed for ${story_id}" >&2
       return 1
     fi

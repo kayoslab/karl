@@ -23,7 +23,8 @@ architect_run() {
 
   local response
   if ! response=$(cd "${workspace_root}" && subagent_invoke_json "architect" \
-    "Evaluate the architectural impact of this plan. Return ONLY a valid JSON object. Ticket: ${story_json} Plan: ${plan_json} Existing ADRs: ${adrs} Technology Context: ${tech}"); then
+    "Evaluate the architectural impact of this plan. Return ONLY a valid JSON object. Ticket: ${story_json} Plan: ${plan_json} Existing ADRs: ${adrs} Technology Context: ${tech}" \
+    "${SCHEMA_ARCHITECT:-}"); then
     echo "ERROR: Architect agent failed for ${story_id}" >&2
     return 1
   fi
