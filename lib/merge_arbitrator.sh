@@ -100,11 +100,17 @@ _merge_arbitrator_do_merge() {
   # Perform the actual merge on main
   echo "[merge_arbitrator] Merging ${branch} to main for ${ticket_id}..."
 
-  # Stash dirty workspace state (prd.json modified by ticket claiming)
+  # Stash dirty workspace state (prd.json modified by ticket claiming, or
+  # index out of sync from ADR fast-track commits via update-ref)
   local stashed="false"
-  if ! git -C "${workspace_root}" diff --quiet 2>/dev/null; then
-    git -C "${workspace_root}" stash push -q 2>/dev/null && stashed="true"
+  if ! git -C "${workspace_root}" diff --quiet 2>/dev/null || \
+     ! git -C "${workspace_root}" diff --cached --quiet 2>/dev/null; then
+    git -C "${workspace_root}" stash push -q --include-untracked 2>/dev/null && stashed="true"
   fi
+
+  # Reset index to match HEAD before checkout (update-ref from ADR fast-track
+  # can leave the index pointing at an older tree)
+  git -C "${workspace_root}" reset --mixed HEAD > /dev/null 2>&1 || true
 
   if ! git -C "${workspace_root}" checkout main > /dev/null 2>&1; then
     echo "ERROR: Could not checkout main in ${workspace_root}" >&2
