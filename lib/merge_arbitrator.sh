@@ -93,7 +93,7 @@ _merge_arbitrator_do_merge() {
   local merge_output
   merge_output=$(git -C "${workspace_root}" merge-tree "${merge_base}" main "${branch}" 2>/dev/null) || true
 
-  if printf '%s\n' "${merge_output}" | grep -q '<<<<<<'; then
+  if [[ "${merge_output}" == *'<<<<<<'* ]]; then
     echo "[merge_arbitrator] Potential conflicts detected for ${ticket_id} — will attempt resolution" >&2
   fi
 

@@ -64,7 +64,7 @@ merge_check_no_conflicts() {
   local merge_output
   merge_output=$(git -C "${workspace_root}" merge-tree "${merge_base}" "${base}" "${feature}" 2>/dev/null) || true
 
-  if printf '%s' "${merge_output}" | grep -q '<<<<<<'; then
+  if [[ "${merge_output}" == *'<<<<<<'* ]]; then
     echo "merge_check_no_conflicts: merge conflicts detected between '${feature}' and '${base}'"
     return 2
   fi
