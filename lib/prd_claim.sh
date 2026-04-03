@@ -88,6 +88,7 @@ prd_claim_ticket() {
 
 # prd_release_ticket <workspace_root> <ticket_id>
 # Set status="available" on failure (release the claim).
+# Only releases if ticket is currently in_progress — never overwrites pass or fail.
 # Returns 0 on success, 1 on failure.
 prd_release_ticket() {
   local workspace_root="${1:?workspace_root required}"
@@ -101,6 +102,23 @@ prd_release_ticket() {
 
   if ! _prd_lock_acquire "${workspace_root}"; then
     return 1
+  fi
+
+  # Only release if currently in_progress — don't overwrite pass or fail
+  local current_status
+  current_status=$(jq -r --arg id "${ticket_id}" \
+    '(if type == "array" then . else .userStories end)
+     | .[] | select(.id == $id)
+     | if .status then .status
+       elif .passes == true then "pass"
+       else "available"
+       end' \
+    "${prd_file}" 2>/dev/null) || true
+
+  if [[ "${current_status}" != "in_progress" ]]; then
+    _prd_lock_release "${workspace_root}"
+    echo "[prd_claim] Ticket ${ticket_id} not released (status: ${current_status})"
+    return 0
   fi
 
   local updated
