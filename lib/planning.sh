@@ -36,6 +36,7 @@ Reviewer feedback from previous attempt: ${feedback}"
       echo "ERROR: Planner agent failed for ${story_id}" >&2
       return 1
     fi
+    mkdir -p "${artifact_dir}" 2>/dev/null || true
     printf '%s\n' "${plan_response}" > "${artifact_dir}/plan.json"
 
     local review_prompt="Review this implementation plan. Return ONLY a valid JSON object.
@@ -47,6 +48,7 @@ Plan: ${plan_response}"
       echo "ERROR: Reviewer agent failed for ${story_id}" >&2
       return 1
     fi
+    mkdir -p "${artifact_dir}" 2>/dev/null || true
     printf '%s\n' "${review_response}" > "${artifact_dir}/review.json"
 
     # Check for approval:
@@ -81,8 +83,10 @@ Plan: ${plan_response}"
       if [[ -n "${corrections}" ]]; then
         echo "[planning] Plan approved with corrections for ${story_id}"
         # Append corrections to plan.json so developer sees them
-        printf '%s\n' "${plan_response}" | jq --arg c "${corrections}" '. + {reviewer_corrections: $c}' \
-          > "${artifact_dir}/plan.json" 2>/dev/null || true
+        local corrected_plan
+        corrected_plan=$(printf '%s' "${plan_response}" | jq --arg c "${corrections}" '. + {reviewer_corrections: $c}' 2>/dev/null) || corrected_plan="${plan_response}"
+        mkdir -p "${artifact_dir}" 2>/dev/null || true
+        printf '%s\n' "${corrected_plan}" > "${artifact_dir}/plan.json"
       else
         echo "[planning] Plan approved for ${story_id}"
       fi
