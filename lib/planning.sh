@@ -28,8 +28,14 @@ planning_run_loop() {
     local plan_prompt="Create an implementation plan for this ticket. Return ONLY a valid JSON object.
 Ticket: ${story_json}
 Technology Context: ${tech}"
-    [[ -n "${feedback}" ]] && plan_prompt="${plan_prompt}
-Reviewer feedback from previous attempt: ${feedback}"
+    if [[ -n "${feedback}" ]]; then
+      plan_prompt="${plan_prompt}
+
+IMPORTANT — Your previous plan was REJECTED by the reviewer. You MUST address ALL of the following feedback in your revised plan. Do not repeat the same plan.
+
+Reviewer feedback:
+${feedback}"
+    fi
 
     local plan_response
     if ! plan_response=$(cd "${workspace_root}" && subagent_invoke_json "planner" "${plan_prompt}"); then
@@ -111,8 +117,8 @@ Plan: ${plan_response}"
       ] | map(select(length > 0)) | join("; ")')
 
     if [[ -z "${feedback}" ]]; then
-      # Last resort: dump the entire response minus the verdict/approved fields
-      feedback=$(printf '%s' "${review_response}" | jq -r 'del(.approved, .verdict, .plan_hash) | tostring')
+      # No recognized feedback fields — pass the entire review response
+      feedback="${review_response}"
     fi
 
     echo "[planning] Plan rejected (attempt ${attempt}/${max_retries}): ${feedback}"
