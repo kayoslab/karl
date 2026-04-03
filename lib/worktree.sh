@@ -50,8 +50,10 @@ worktree_create() {
   mkdir -p "${base_dir}"
 
   if [[ -d "${wt_path}" ]]; then
-    echo "[worktree] Worktree already exists at ${wt_path}" >&2
-    return 0
+    echo "[worktree] Removing stale worktree at ${wt_path}" >&2
+    git -C "${workspace_root}" worktree remove --force "${wt_path}" 2>/dev/null || \
+      rm -rf "${wt_path}"
+    git -C "${workspace_root}" worktree prune 2>/dev/null || true
   fi
 
   # Clean up stale branch from a previous failed run if needed
