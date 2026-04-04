@@ -57,26 +57,8 @@ Plan: ${plan_response}"
     mkdir -p "${artifact_dir}" 2>/dev/null || true
     printf '%s\n' "${review_response}" > "${artifact_dir}/review.json"
 
-    # Check for approval:
-    #   1. Any boolean true field whose key suggests approval
-    #   2. Any string value (top-level or one-level nested) that says "approved" etc.
-    #   3. Any string value indicating work is already done
     local approved
-    approved=$(printf '%s' "${review_response}" | jq -r '
-      # Check boolean fields with approval-like keys
-      if any(to_entries[];
-        .value == true and (.key | test("approv|pass|ready|accept"; "i"))
-      ) then "true"
-      else
-        # Flatten all top-level and one-level-nested string values into one blob
-        [to_entries[] | .value | if type == "string" then .
-         elif type == "object" then (to_entries[] | .value | strings)
-         else empty end] | join(" ") |
-        if test("^approve|\\bapproved\\b"; "i") then "true"
-        elif test("already.?implement|nothing.?to.?do|no.?remaining.?work|fully.?satisf"; "i") then "true"
-        else "false"
-        end
-      end')
+    approved=$(printf '%s' "${review_response}" | jq -r '.approved // false')
 
     if [[ "${approved}" == "true" ]]; then
       # Merge reviewer corrections into the plan so downstream agents see them
@@ -101,20 +83,8 @@ Plan: ${plan_response}"
       return 0
     fi
 
-    # Extract feedback from any field that looks like reviewer concerns.
-    # Each can be a string or an array of strings/objects.
     feedback=$(printf '%s' "${review_response}" | jq -r '
-      def extract: if type == "array" then .[] else . end | if type == "string" then . else tostring end;
-      [
-        (.concerns         // null | if . then extract else empty end),
-        (.changes_required // null | if . then extract else empty end),
-        (.corrections      // null | if . then extract else empty end),
-        (.refinements      // null | if . then extract else empty end),
-        (.notes            // null | if . then extract else empty end),
-        (.feedback         // null | if . then extract else empty end),
-        (.reason           // null | if . then extract else empty end),
-        (.comments         // null | if . then extract else empty end)
-      ] | map(select(length > 0)) | join("; ")')
+      (.concerns // []) | map(if type == "string" then . else tostring end) | join("; ")')
 
     if [[ -z "${feedback}" ]]; then
       # No recognized feedback fields — pass the entire review response

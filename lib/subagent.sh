@@ -167,14 +167,35 @@ subagent_invoke_json() {
 
   # Extract JSON from the response
   local json
-  json=$(_subagent_extract_json "${raw}") || {
-    echo "ERROR: Could not extract valid JSON from ${agent_name} response" >&2
-    if [[ "${KARL_VERBOSE:-false}" == "true" ]]; then
-      echo "Raw response:" >&2
-      printf '%s\n' "${raw}" >&2
+  if ! json=$(_subagent_extract_json "${raw}"); then
+    # Correction retry: re-invoke with a focused prompt asking for valid JSON
+    if [[ "${KARL_JSON_RETRY:-true}" == "true" ]] && [[ -n "${json_schema}" ]]; then
+      local template
+      template=$(_subagent_schema_template "${json_schema}" 2>/dev/null) || template=""
+      if [[ -n "${template}" ]]; then
+        local truncated
+        truncated=$(printf '%s' "${raw}" | head -c 500)
+        local correction_prompt="Your previous response was not valid JSON. Return ONLY this exact JSON structure with no other text:
+${template}
+
+Your previous output (truncated): ${truncated}"
+        echo "[subagent] ${agent_name} returned non-JSON — attempting correction retry" >&2
+        local retry_raw retry_rc=0
+        retry_raw=$(subagent_invoke "${agent_name}" "${correction_prompt}" "${json_schema}") || retry_rc=$?
+        if [[ "${retry_rc}" -eq 0 ]]; then
+          json=$(_subagent_extract_json "${retry_raw}") || true
+        fi
+      fi
     fi
-    return 1
-  }
+    if [[ -z "${json}" ]]; then
+      echo "ERROR: Could not extract valid JSON from ${agent_name} response" >&2
+      if [[ "${KARL_VERBOSE:-false}" == "true" ]]; then
+        echo "Raw response:" >&2
+        printf '%s\n' "${raw}" >&2
+      fi
+      return 1
+    fi
+  fi
 
   # If schema provided, validate required fields; normalize if missing
   if [[ -n "${json_schema}" ]]; then
@@ -208,110 +229,66 @@ subagent_invoke_json() {
 }
 
 # _subagent_normalize <json> <schema>
-# Maps common variant field names to canonical schema field names.
+# Schema-driven normalizer: maps variant field names to canonical ones.
+# Reads required fields and types from the schema to decide what to look for.
 # Returns normalized JSON on stdout.
 _subagent_normalize() {
   local json="${1}"
   local schema="${2}"
 
   local result
-  result=$(printf '%s' "${json}" | jq '
-    # Normalize approval boolean
-    (if has("approved") then . else
-      if has("reviewPass") then .approved = .reviewPass | del(.reviewPass)
-      elif has("planApproved") then .approved = .planApproved | del(.planApproved)
-      elif has("readyToExecute") then .approved = .readyToExecute | del(.readyToExecute)
-      elif has("accepted") then .approved = .accepted | del(.accepted)
-      elif (.verdict // "" | test("^approve"; "i")) then .approved = true
-      elif (.review_status // "" | test("^approve"; "i")) then .approved = true
-      elif (.status // "" | test("^approve"; "i")) then .approved = true
-      elif (.decision // "" | test("^approve|ready"; "i")) then .approved = true
-      elif any(to_entries[]; .value == true and (.key | test("approv|pass|ready|accept|valid"; "i")))
-        then .approved = true
-      elif any(to_entries[]; .value | type == "string" and test("ready.?to.?implement|already.?implement|nothing.?to.?do|fully.?satisf"; "i"))
-        then .approved = true
-      else .
+  result=$(printf '%s' "${json}" | jq --argjson schema "${schema}" '
+    # Track which source keys have been consumed by prior field mappings
+    . as $orig | {obj: $orig, used: []} |
+
+    reduce ($schema.required // [])[] as $field (.;
+      if .obj | has($field) then .
+      else
+        ($schema.properties[$field] // {}) as $prop |
+
+        # Strategy 1: boolean fields — find any true-valued key with approval-like name
+        if ($prop.type == "boolean") then
+          if (.obj | any(to_entries[]; .value == true and (.key | test("approv|pass|ready|accept|valid"; "i"))))
+          then .obj += {($field): true}
+          elif (.obj | any(to_entries[]; .value | type == "string" and test("approved|ready.?to.?implement|nothing.?to.?do|fully.?satisf"; "i")))
+          then .obj += {($field): true}
+          else .obj += {($field): false}
+          end
+
+        # Strategy 2: enum string fields — find any string value matching an enum option
+        elif ($prop.enum // null) then
+          ($prop.enum) as $opts |
+          (.obj | to_entries | map(select(.value | type == "string") | select(.key as $k | $opts | any(. as $o | $k | test($o; "i")) | not)) | map(.value) | map(select(. as $v | $opts | any(. as $o | $v | test($o; "i")))) | first // null) as $match |
+          if $match then .obj += {($field): ($opts | map(select(. as $o | $match | test($o; "i"))) | first)}
+          else .
+          end
+
+        # Strategy 3: array fields — prefer key name similarity, skip consumed keys
+        elif ($prop.type == "array") then
+          (.used) as $used |
+          (.obj | to_entries | map(select(.value | type == "array") | select(.key as $k | $used | index($k) | not) | select(.key as $k | $schema.required | index($k) | not))) as $candidates |
+          ($candidates | map(select(.key | test($field; "i"))) | first // null) as $similar |
+          (if $similar then $similar else ($candidates | first // null) end) as $found |
+          if $found then .obj += {($field): $found.value} | .used += [$found.key]
+          else .obj += {($field): []}
+          end
+
+        # Strategy 4: nullable string fields (e.g., adr_entry) — find plausible match
+        # Match if either key is a substring of the other, or they share a word (split on _)
+        elif (($prop.type // []) | if type == "array" then . else [.] end | any(. == "string")) then
+          (($field | split("_")) as $fwords |
+          .obj | to_entries | map(select(.value | type == "string") |
+            select(.key as $k | .key | split("_") | any(. as $w | $fwords | any(. == $w))))
+          | first // null) as $found |
+          if $found then .obj += {($field): $found.value}
+          else .obj += {($field): null}
+          end
+
+        else .
+        end
       end
-    end) |
-
-    # Normalize concerns array
-    (if has("concerns") then . else
-      if has("changes_required") then .concerns = .changes_required
-      elif has("changes") then .concerns = .changes
-      elif has("corrections") then .concerns = (.corrections | map(if type == "string" then . else tostring end))
-      elif has("issues") then .concerns = (.issues | map(if type == "string" then . else tostring end))
-      elif has("feedback") then .concerns = (if (.feedback | type) == "array" then .feedback else [.feedback] end)
-      else .concerns = []
-      end
-    end) |
-
-    # Normalize decision string
-    (if has("decision") then . else
-      if has("verdict") then .decision = .verdict | del(.verdict)
-      elif has("result") then .decision = .result | del(.result)
-      elif has("status") then .decision = .status
-      else .
-      end
-    end) |
-
-    # Normalize test_results string
-    (if has("test_results") then . else
-      if has("result") then .test_results = .result
-      elif has("outcome") then .test_results = .outcome
-      elif has("status") then .test_results = .status
-      else .
-      end
-    end) |
-
-    # Normalize resolution string
-    (if has("resolution") then . else
-      if has("result") then .resolution = .result
-      elif has("status") then .resolution = .status
-      else .
-      end
-    end) |
-
-    # Normalize failures array
-    (if has("failures") then . else
-      if has("errors") then .failures = .errors
-      elif has("failed_tests") then .failures = .failed_tests
-      elif has("issues") then .failures = .issues
-      else .
-      end
-    end) |
-
-    # Normalize adr_entry — default to null (no ADR needed)
-    (if has("adr_entry") then . else
-      if has("adr") then .adr_entry = .adr
-      elif has("adr_content") then .adr_entry = .adr_content
-      elif has("decision_record") then .adr_entry = .decision_record
-      else .adr_entry = null
-      end
-    end) |
-
-    # Ensure concerns array exists
-    (if has("concerns") then . else .concerns = [] end) |
-
-    # Ensure approved exists — default to false if nothing matched above
-    (if has("approved") then . else .approved = false end) |
-
-    # Ensure failures array exists
-    (if has("failures") then . else .failures = [] end)
-  ' 2>/dev/null) || result=""
-
-  # If jq normalization failed entirely, try a simpler last-resort
-  if [[ -z "${result}" ]]; then
-    local lower
-    lower=$(printf '%s' "${json}" | tr '[:upper:]' '[:lower:]')
-    if [[ "${lower}" == *"\"approved\""*":"*"true"* ]] || \
-       [[ "${lower}" == *"\"approve\""* ]] || \
-       [[ "${lower}" == *"\"lgtm\""* ]] || \
-       [[ "${lower}" == *"reviewpass"*":"*"true"* ]]; then
-      result=$(printf '%s' "${json}" | jq '. + {approved: true, concerns: []}' 2>/dev/null) || result="${json}"
-    else
-      result=$(printf '%s' "${json}" | jq '. + {approved: false, concerns: []}' 2>/dev/null) || result="${json}"
-    fi
-  fi
+    ) | .obj
+  ' 2>/dev/null) || result="${json}"
 
   printf '%s' "${result}"
 }

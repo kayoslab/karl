@@ -21,3 +21,42 @@ SCHEMA_TESTER='{"type":"object","properties":{"tests_added":{"type":"array","ite
 
 # Merge resolver: conflict resolution outcome
 SCHEMA_MERGE_RESOLVER='{"type":"object","properties":{"resolution":{"type":"string","enum":["resolved","unresolvable"]},"resolved_files":{"type":"array"},"summary":{"type":"string"}},"required":["resolution","summary"]}'
+
+# _subagent_schema_template <json_schema>
+# Converts a JSON Schema into a human-readable template string for correction prompts.
+# Example output: {"approved": <boolean>, "concerns": [<string>]}
+_subagent_schema_template() {
+  local schema="${1:?schema required}"
+  printf '%s' "${schema}" | jq -r '
+    def type_hint:
+      if type == "object" then
+        if .type then
+          if (.type | type) == "array" then
+            "<" + (.type | join(" or ")) + ">"
+          elif .enum then
+            "\"" + (.enum | join("|")) + "\""
+          else
+            "<" + .type + ">"
+          end
+        else "<value>"
+        end
+      elif type == "string" then "<" + . + ">"
+      else "<value>"
+      end;
+    "{" + (
+      [.properties | to_entries[] |
+        "\"" + .key + "\": " + (
+          if .value.type == "array" then
+            "[" + (.value.items | type_hint // "<value>") + "]"
+          elif .value.enum then
+            "\"" + (.value.enum | join("|")) + "\""
+          elif (.value.type | type) == "array" then
+            "<" + (.value.type | join(" or ")) + ">"
+          else
+            "<" + (.value.type // "value") + ">"
+          end
+        )
+      ] | join(", ")
+    ) + "}"
+  ' 2>/dev/null || echo "{}"
+}

@@ -32,7 +32,7 @@ architect_run() {
   printf '%s\n' "${response}" > "${artifact_dir}/architect.json"
 
   local adr_entry
-  adr_entry=$(printf '%s' "${response}" | jq -r '.adr_entry // .adr // .adr_content // .decision_record // empty')
+  adr_entry=$(printf '%s' "${response}" | jq -r '.adr_entry // empty')
   if [[ -n "${adr_entry}" && "${adr_entry}" != "null" ]]; then
     mkdir -p "${workspace_root}/Output/ADR"
     printf '%s\n' "${adr_entry}" > "${workspace_root}/Output/ADR/${story_id}.md"

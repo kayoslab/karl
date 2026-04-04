@@ -50,11 +50,9 @@ DEPLOYPROMPT
   rm -f "${prompt_file}"
   printf '%s\n' "${response}" > "${artifact_dir}/deploy.json"
 
-  # Check multiple field names: decision, verdict, result, status
   local decision
   decision=$(printf '%s' "${response}" | jq -r '
-    (.decision // .verdict // .result // .status // "fail")
-    | if test("^pass"; "i") then "pass" else "fail" end')
+    (.decision // "fail") | if test("^pass"; "i") then "pass" else "fail" end')
 
   git -C "${workspace_root}" add -A > /dev/null 2>&1 || true
   git -C "${workspace_root}" commit -m "deploy: [${story_id}] deployment gate — ${decision}" > /dev/null 2>&1 || true
