@@ -100,6 +100,15 @@ _merge_arbitrator_do_merge() {
   # Perform the actual merge on main
   echo "[merge_arbitrator] Merging ${branch} to main for ${ticket_id}..."
 
+  # Save prd.json before stash/checkout — the stash+checkout clobbers it with
+  # the committed version, erasing in-progress claims and creating a window
+  # where other workers can double-claim tickets.
+  local prd_file="${workspace_root}/Input/prd.json"
+  local prd_saved=""
+  if [[ -f "${prd_file}" ]]; then
+    prd_saved=$(cat "${prd_file}")
+  fi
+
   # Stash dirty workspace state (prd.json modified by ticket claiming, or
   # index out of sync from ADR fast-track commits via update-ref)
   local stashed="false"
@@ -116,6 +125,11 @@ _merge_arbitrator_do_merge() {
     echo "ERROR: Could not checkout main in ${workspace_root}" >&2
     [[ "${stashed}" == "true" ]] && git -C "${workspace_root}" stash pop -q 2>/dev/null || true
     return 1
+  fi
+
+  # Restore prd.json immediately so claim state is visible to other workers
+  if [[ -n "${prd_saved}" ]]; then
+    printf '%s\n' "${prd_saved}" > "${prd_file}"
   fi
 
   local merge_err
