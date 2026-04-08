@@ -2,8 +2,9 @@
 # schemas.sh - JSON Schema definitions for agent responses
 #
 # Each schema defines the required fields and types for a specific agent.
-# Used by subagent_invoke_json with --json-schema for model-level enforcement
-# and _subagent_validate_schema for response validation.
+# Passed to the Claude CLI via --json-schema for model-level structured output
+# enforcement. The CLI guarantees the response matches the schema, so no
+# post-hoc validation or normalization is needed.
 
 set -euo pipefail
 
@@ -22,41 +23,14 @@ SCHEMA_TESTER='{"type":"object","properties":{"tests_added":{"type":"array","ite
 # Merge resolver: conflict resolution outcome
 SCHEMA_MERGE_RESOLVER='{"type":"object","properties":{"resolution":{"type":"string","enum":["resolved","unresolvable"]},"resolved_files":{"type":"array"},"summary":{"type":"string"}},"required":["resolution","summary"]}'
 
-# _subagent_schema_template <json_schema>
-# Converts a JSON Schema into a human-readable template string for correction prompts.
-# Example output: {"approved": <boolean>, "concerns": [<string>]}
-_subagent_schema_template() {
-  local schema="${1:?schema required}"
-  printf '%s' "${schema}" | jq -r '
-    def type_hint:
-      if type == "object" then
-        if .type then
-          if (.type | type) == "array" then
-            "<" + (.type | join(" or ")) + ">"
-          elif .enum then
-            "\"" + (.enum | join("|")) + "\""
-          else
-            "<" + .type + ">"
-          end
-        else "<value>"
-        end
-      elif type == "string" then "<" + . + ">"
-      else "<value>"
-      end;
-    "{" + (
-      [.properties | to_entries[] |
-        "\"" + .key + "\": " + (
-          if .value.type == "array" then
-            "[" + (.value.items | type_hint // "<value>") + "]"
-          elif .value.enum then
-            "\"" + (.value.enum | join("|")) + "\""
-          elif (.value.type | type) == "array" then
-            "<" + (.value.type | join(" or ")) + ">"
-          else
-            "<" + (.value.type // "value") + ">"
-          end
-        )
-      ] | join(", ")
-    ) + "}"
-  ' 2>/dev/null || echo "{}"
-}
+# Planner: concrete implementation plan for a ticket
+SCHEMA_PLANNER='{"type":"object","properties":{"plan":{"type":"array","items":{"type":"string"}},"testing_recommendations":{"type":"array","items":{"type":"string"}},"estimated_complexity":{"type":"string","enum":["low","medium","high"]},"risks":{"type":"array","items":{"type":"string"}}},"required":["plan","testing_recommendations","estimated_complexity","risks"]}'
+
+# Developer: files changed and summary after implementation
+SCHEMA_DEVELOPER='{"type":"object","properties":{"files_changed":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"}},"required":["files_changed","summary"]}'
+
+# Splitter (split mode): split/keep decisions per ticket
+SCHEMA_SPLITTER='{"type":"object","properties":{"split_decisions":{"type":"array","items":{"type":"object"}}},"required":["split_decisions"]}'
+
+# Splitter (dependency analysis mode): missing dependency updates
+SCHEMA_SPLITTER_DEPS='{"type":"object","properties":{"dependency_updates":{"type":"array","items":{"type":"object"}}},"required":["dependency_updates"]}'

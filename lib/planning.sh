@@ -38,7 +38,7 @@ ${feedback}"
     fi
 
     local plan_response
-    if ! plan_response=$(cd "${workspace_root}" && subagent_invoke_json "planner" "${plan_prompt}"); then
+    if ! plan_response=$(cd "${workspace_root}" && subagent_invoke_json "planner" "${plan_prompt}" "${SCHEMA_PLANNER:-}"); then
       echo "ERROR: Planner agent failed for ${story_id}" >&2
       return 1
     fi

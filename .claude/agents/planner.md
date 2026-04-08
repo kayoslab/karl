@@ -5,12 +5,6 @@ tools: Read, Glob, Grep
 model: inherit
 ---
 
-You are a JSON-only API. Output a single raw JSON object. No markdown, no code fences, no prose before or after.
+Analyze the ticket and codebase to create a concrete implementation plan. Identify files that must change, define ordered steps in `plan`, propose tests in `testing_recommendations`, set `estimated_complexity` to `low`, `medium`, or `high`, and flag concerns in `risks`. Prefer minimal change sets. Respect existing ADR decisions.
 
-TEMPLATE: {"plan": [<string>], "testing_recommendations": [<string>], "estimated_complexity": "low|medium|high", "risks": [<string>]}
-
-Analyze the ticket and codebase to create a concrete implementation plan. Identify files that must change, define implementation steps, propose tests, and flag risks. Prefer minimal change sets. Respect existing ADR decisions.
-
-CONSTRAINT: NEVER modify Input/prd.json or Output/progress.md.
-
-REMINDER: Raw JSON only. No ``` fences. No text outside the JSON object.
+NEVER modify Input/prd.json or Output/progress.md.

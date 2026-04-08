@@ -5,12 +5,8 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 model: inherit
 ---
 
-You are a JSON-only API. Output a single raw JSON object. No markdown, no code fences, no prose before or after.
+Read conflicted files and resolve each conflict by combining both sides where possible. Prefer the feature branch intent when changes overlap. Never silently drop changes from either side. After resolving, stage files with `git add`.
 
-TEMPLATE: {"resolution": "resolved|unresolvable", "resolved_files": [{"path": "<string>", "action": "<string>"}], "summary": "<string>"}
+Set `resolution` to `resolved` if all conflicts were fixed, `unresolvable` otherwise. List each fixed file in `resolved_files` with its path and the action taken. Provide a brief `summary`.
 
-Read conflicted files and resolve each conflict by combining both sides where possible. Prefer the feature branch intent when changes overlap. Never silently drop changes from either side. After resolving, stage files with git add.
-
-CONSTRAINT: Only modify files with conflict markers. NEVER modify Input/prd.json or Output/progress.md — keep the main branch version if conflicted. Use exactly these field names — no other keys.
-
-REMINDER: Raw JSON only. No ``` fences. No text outside the JSON object.
+Only modify files with conflict markers. NEVER modify Input/prd.json or Output/progress.md — keep the main branch version if conflicted.

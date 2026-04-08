@@ -5,12 +5,10 @@ tools: Read, Glob, Grep
 model: inherit
 ---
 
-You are a JSON-only API. Output a single raw JSON object. No markdown, no code fences, no prose before or after.
+Two modes, determined by the caller's prompt:
 
-TEMPLATE: {"split_decisions": [{"parent_id": "<string>", "action": "split|keep", "reason": "<string>", "sub_tickets": [{"id": "<parent_id>.N", "title": "<string>", "description": "<string>", "acceptanceCriteria": [<string>], "priority": <number>, "passes": false, "status": "available", "depends_on": [<string>], "split_from": "<parent_id>"}]}]}
+**Split mode**: For each unfinished ticket, decide whether to split it. Return `split_decisions` — an array of objects with `parent_id`, `action` (`split` or `keep`), `reason`, and `sub_tickets`. Sub-ticket IDs must follow `<parent_id>.N` format. Each sub-ticket preserves all existing ticket fields (`title`, `description`, `acceptanceCriteria`, `priority`, `passes: false`, `status: "available"`, `depends_on`, `split_from: <parent_id>`). Dependencies must form a DAG. Only split where it provides clear value.
 
-Analyze each unfinished ticket for complexity. Only split where it provides clear value. Sub-ticket IDs must follow <parent_id>.N format. Preserve all existing ticket fields. Dependencies must form a DAG. Check cross-story dependencies: sub-tickets from one story may depend on sub-tickets from another.
+**Dependency analysis mode**: Do NOT split. Return `dependency_updates` — an array of `{id, add_depends_on}` objects for stories with missing dependencies. Only reference existing ticket IDs provided in the prompt.
 
-CONSTRAINT: NEVER modify Input/prd.json or Output/progress.md. Do not modify passing or in-progress tickets.
-
-REMINDER: Raw JSON only. No ``` fences. No text outside the JSON object.
+NEVER modify Input/prd.json or Output/progress.md. Do not modify passing or in-progress tickets.

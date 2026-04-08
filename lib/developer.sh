@@ -50,7 +50,7 @@ After implementing, return ONLY a valid JSON object: {"files_changed": [...], "s
 DEVPROMPT
 
   local response
-  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "developer" "$(cat "${prompt_file}")"); then
+  if ! response=$(cd "${workspace_root}" && subagent_invoke_json "developer" "$(cat "${prompt_file}")" "${SCHEMA_DEVELOPER:-}"); then
     rm -f "${prompt_file}"
     echo "ERROR: Developer agent failed for ${story_id}" >&2
     return 1

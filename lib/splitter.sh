@@ -11,7 +11,8 @@ splitter_run_agent() {
 
   local response
   if ! response=$(subagent_invoke_json "splitter" \
-    "Analyze this PRD and return ONLY a JSON object with split_decisions. No prose, no markdown, no explanation — just the JSON. PRD: ${prd_json}"); then
+    "Analyze this PRD and return a split_decisions array. PRD: ${prd_json}" \
+    "${SCHEMA_SPLITTER:-}"); then
     echo "ERROR: Splitter agent returned invalid JSON" >&2
     return 1
   fi
@@ -215,7 +216,8 @@ splitter_analyze_deps() {
 
   local response
   if ! response=$(cd "${workspace_root}" && subagent_invoke_json "splitter" \
-    "Analyze these stories for MISSING dependencies only. Do NOT split any tickets. For each story, check if it logically depends on another story that is not listed in its depends_on. IMPORTANT: Only use these existing ticket IDs in add_depends_on: ${valid_ids} — do NOT reference IDs that are not in this list. Return ONLY a JSON object. Format: {\"dependency_updates\": [{\"id\": \"US-003\", \"add_depends_on\": [\"US-002\"]}]} If no dependencies are missing, return {\"dependency_updates\": []}. PRD: ${prd_content}"); then
+    "Analyze these stories for MISSING dependencies only. Do NOT split any tickets. For each story, check if it logically depends on another story that is not listed in its depends_on. IMPORTANT: Only use these existing ticket IDs in add_depends_on: ${valid_ids} — do NOT reference IDs that are not in this list. Each dependency_updates item has the shape {\"id\": \"US-003\", \"add_depends_on\": [\"US-002\"]}. If no dependencies are missing, return an empty dependency_updates array. PRD: ${prd_content}" \
+    "${SCHEMA_SPLITTER_DEPS:-}"); then
     echo "[deps] WARNING: Dependency analysis agent failed — skipping" >&2
     # Non-fatal: still validate what we have
   else

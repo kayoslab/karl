@@ -17,7 +17,8 @@ tester_generate() {
 
   local response
   if ! response=$(cd "${workspace_root}" && subagent_invoke_json "tester" \
-    "Generate tests for this ticket. Mode: generate. Return ONLY a valid JSON object. Ticket: ${story_json} Plan: ${plan_json} Technology Context: ${tech}"); then
+    "Generate tests for this ticket. Mode: generate. Ticket: ${story_json} Plan: ${plan_json} Technology Context: ${tech}" \
+    "${SCHEMA_TESTER:-}"); then
     echo "ERROR: Tester agent failed for ${story_id}" >&2
     return 1
   fi
@@ -119,7 +120,8 @@ tester_fix() {
 
   local response
   if ! response=$(cd "${workspace_root}" && subagent_invoke_json "tester" \
-    "Fix incorrect tests. Mode: fix. Return ONLY a valid JSON object. Ticket: ${story_json} Plan: ${plan_json} Technology Context: ${tech} Tests: ${tests} Failures: ${failures}"); then
+    "Fix incorrect tests. Mode: fix. Ticket: ${story_json} Plan: ${plan_json} Technology Context: ${tech} Tests: ${tests} Failures: ${failures}" \
+    "${SCHEMA_TESTER:-}"); then
     echo "ERROR: Tester fix failed for ${story_id}" >&2
     return 1
   fi
